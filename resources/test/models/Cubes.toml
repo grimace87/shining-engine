@@ -1,0 +1,3 @@
+[[merges]]
+name = "Cubes"
+geometries = ["Cube1", "Cube2"]
