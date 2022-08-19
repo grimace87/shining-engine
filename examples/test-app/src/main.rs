@@ -1,5 +1,9 @@
 
-use window::{WindowEventHandler, WindowStateEvent, Window, MessageProxy, Command};
+use window::{
+    RenderEventHandler, RenderCycleEvent,
+    WindowEventHandler, WindowStateEvent, Window, MessageProxy, WindowCommand,
+    KeyCode, KeyState
+};
 
 #[derive(PartialEq, Debug)]
 pub enum TestAppMessage {
@@ -7,11 +11,11 @@ pub enum TestAppMessage {
 }
 
 struct QuitsQuicklyApp {
-    message_proxy: MessageProxy<Command<TestAppMessage>>
+    message_proxy: MessageProxy<WindowCommand<TestAppMessage>>
 }
 
 impl QuitsQuicklyApp {
-    fn new(message_proxy: MessageProxy<Command<TestAppMessage>>) -> Self {
+    fn new(message_proxy: MessageProxy<WindowCommand<TestAppMessage>>) -> Self {
         Self { message_proxy }
     }
 }
@@ -19,15 +23,24 @@ impl QuitsQuicklyApp {
 impl WindowEventHandler<TestAppMessage> for QuitsQuicklyApp {
 
     fn on_window_state_event(&self, event: WindowStateEvent) {
-        if event == WindowStateEvent::FocusGained {
-            self.message_proxy.send_event(Command::Custom(TestAppMessage::RequestQuit)).unwrap();
+        if let WindowStateEvent::KeyEvent(KeyCode::Escape, KeyState::Pressed) = event {
+            self.message_proxy.send_event(WindowCommand::RequestClose)
+                .unwrap();
         }
     }
 
-    fn on_custom_event(&self, event: TestAppMessage) {
-        if event == TestAppMessage::RequestQuit {
-            self.message_proxy.send_event(Command::RequestClose)
-                .unwrap();
+    fn on_window_custom_event(&self, _event: TestAppMessage) {}
+}
+
+impl RenderEventHandler for QuitsQuicklyApp {
+
+    fn on_render_cycle_event(&self, event: RenderCycleEvent) {
+        match event {
+            RenderCycleEvent::PrepareUpdate => {
+                self.message_proxy.send_event(WindowCommand::RequestRedraw)
+                    .unwrap();
+            },
+            _ => {}
         }
     }
 }
@@ -35,7 +48,7 @@ impl WindowEventHandler<TestAppMessage> for QuitsQuicklyApp {
 // Current setup will intercept a FocusGained state event, then post a custom message.
 // This custom message will also be intercepted, at which point a RequestClose command is sent.
 fn main() {
-    let window = Window::<TestAppMessage>::new();
+    let window = Window::<TestAppMessage>::new("Demo App");
     let message_proxy = window.new_message_proxy();
     let app = QuitsQuicklyApp::new(message_proxy.clone());
     window.run(app);
