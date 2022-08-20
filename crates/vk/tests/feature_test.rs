@@ -15,7 +15,7 @@ impl VulkanTestApp {
 
     fn new<T: Send + Debug>(window: &Window<T>) -> Self {
         unsafe {
-            vk::VkCore::new(window).unwrap();
+            vk::VkCore::new(window, vec![]).unwrap();
         }
         Self {}
     }
