@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 winit = "0.26.1"
+raw-window-handle = "0.3.3"
 
 [dev-dependencies]
 window = { path = "." }

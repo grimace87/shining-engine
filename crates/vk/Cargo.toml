@@ -1,0 +1,18 @@
+[package]
+name = "vk"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ash = "0.32.1"
+ash-window = "0.6.0"
+raw-window-handle = "0.3.3"
+
+[dev-dependencies]
+vk = { path = "." }
+window = { path = "../window" }
+
+[[test]]
+name = "feature_test"
+path = "tests/feature_test.rs"
+harness = false
