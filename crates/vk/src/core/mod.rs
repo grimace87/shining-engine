@@ -27,24 +27,27 @@ pub enum FeatureDeclaration {
 
 /// Wrap Vulkan components that can exist for the life of the app once successfully created
 pub struct VkCore {
-    function_loader: Entry,
-    instance: Instance,
+    pub function_loader: Entry,
+    pub instance: Instance,
     debug_utils: Option<(DebugUtils, vk::DebugUtilsMessengerEXT)>,
-    physical_device: vk::PhysicalDevice,
-    queues: Queues,
-    physical_device_features: vk::PhysicalDeviceFeatures
+    pub physical_device: vk::PhysicalDevice,
+    pub queues: Queues,
+    pub physical_device_features: vk::PhysicalDeviceFeatures
 }
 
 impl VkCore {
 
-    pub unsafe fn new(window_source: &dyn HasRawWindowHandle, features: Vec<FeatureDeclaration>) -> Result<Self, VkError> {
+    pub unsafe fn new(
+        window_owner: &dyn HasRawWindowHandle,
+        features: Vec<FeatureDeclaration>
+    ) -> Result<Self, VkError> {
 
         let entry = Entry::new()
             .map_err(|e| {
                 VkError::OpFailed(format!("Entry creation failed: {:?}", e))
             })?;
 
-        let instance = instance::make_instance(&entry, window_source)?;
+        let instance = instance::make_instance(&entry, window_owner)?;
         let debug_utils = debug::make_debug_utils(&entry, &instance)?;
 
         // Create temporary surface and surface loader
@@ -52,7 +55,7 @@ impl VkCore {
         let surface = ash_window::create_surface(
             &entry,
             &instance,
-            window_source,
+            window_owner,
             None)
             .unwrap();
 

@@ -1,8 +1,10 @@
-use std::fmt::Debug;
+
+use vk::{VkCore, VkContext};
 use window::{
     RenderCycleEvent, RenderEventHandler,
     WindowEventHandler, WindowStateEvent, Window, WindowCommand
 };
+use std::fmt::Debug;
 
 #[derive(PartialEq, Debug)]
 pub enum TestAppMessage {
@@ -15,7 +17,8 @@ impl VulkanTestApp {
 
     fn new<T: Send + Debug>(window: &Window<T>) -> Self {
         unsafe {
-            vk::VkCore::new(window, vec![]).unwrap();
+            let core = VkCore::new(window, vec![]).unwrap();
+            VkContext::new(&core, window).unwrap();
         }
         Self {}
     }
