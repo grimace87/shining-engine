@@ -7,19 +7,13 @@ use ash::{
     version::InstanceV1_0
 };
 
-#[derive(Copy, Clone)]
-pub struct Queues {
-    pub graphics_queue_family_index: u32,
-    pub transfer_queue_family_index: u32
-}
-
 /// Selects the physical device to use, so long as there is one that supports everything needed
 pub unsafe fn select_physical_device(
     instance: &ash::Instance,
     surface_loader: &Surface,
     surface: &vk::SurfaceKHR,
     features: &[FeatureDeclaration]
-) -> Result<(vk::PhysicalDevice, Queues, vk::PhysicalDeviceFeatures), VkError> {
+) -> Result<(vk::PhysicalDevice, u32, u32, vk::PhysicalDeviceFeatures), VkError> {
 
     let physical_devices = instance
         .enumerate_physical_devices()
@@ -69,10 +63,8 @@ pub unsafe fn select_physical_device(
         if graphics_index != unset_value && transfer_index != unset_value {
             return Ok((
                 *physical_device,
-                Queues {
-                    graphics_queue_family_index: graphics_index,
-                    transfer_queue_family_index: transfer_index,
-                },
+                graphics_index,
+                transfer_index,
                 features_to_enable
             ));
         }

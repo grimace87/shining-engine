@@ -4,7 +4,6 @@ mod debug;
 mod physical_device;
 
 use crate::VkError;
-use physical_device::Queues;
 use ash::{
     Entry,
     Instance,
@@ -31,7 +30,8 @@ pub struct VkCore {
     pub instance: Instance,
     debug_utils: Option<(DebugUtils, vk::DebugUtilsMessengerEXT)>,
     pub physical_device: vk::PhysicalDevice,
-    pub queues: Queues,
+    pub graphics_queue_family_index: u32,
+    pub transfer_queue_family_index: u32,
     pub physical_device_features: vk::PhysicalDeviceFeatures
 }
 
@@ -60,7 +60,7 @@ impl VkCore {
             .unwrap();
 
         // Now select a physical device
-        let (physical_device, queues, physical_device_features) =
+        let (physical_device, graphics_queue_family_index, transfer_queue_family_index, physical_device_features) =
             physical_device::select_physical_device(
                 &instance,
                 &surface_fn,
@@ -75,7 +75,8 @@ impl VkCore {
             instance,
             debug_utils,
             physical_device,
-            queues,
+            graphics_queue_family_index,
+            transfer_queue_family_index,
             physical_device_features
         })
     }

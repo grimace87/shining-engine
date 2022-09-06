@@ -100,7 +100,7 @@ unsafe fn validate_basic_requirements(
     surface: vk::SurfaceKHR
 ) -> Result<(u32, vk::Extent2D, vk::SurfaceTransformFlagsKHR), VkError> {
     let physical_device = core.physical_device;
-    let graphics_queue_family_index = core.queues.graphics_queue_family_index;
+    let graphics_queue_family_index = core.graphics_queue_family_index;
 
     let present_supported = surface_fn
         .get_physical_device_surface_support(physical_device, graphics_queue_family_index, surface)

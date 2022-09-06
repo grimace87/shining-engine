@@ -1,7 +1,14 @@
 mod device;
+mod queues;
 mod swapchain;
 
-use crate::{VkCore, VkError};
+use crate::{
+    VkError,
+    VkCore,
+    ImageWrapper,
+    ImageUsage,
+    TexturePixelFormat
+};
 use ash::{
     Device,
     extensions::khr::{
@@ -17,8 +24,9 @@ use vk_mem::AllocatorCreateFlags;
 /// Wrap logical device along with Vulkan components that can exist for the life of a window
 pub struct VkContext {
     pub device: Device,
-    pub graphics_queue: vk::Queue,
-    pub transfer_queue: vk::Queue,
+    borrowed_physical_device_handle: vk::PhysicalDevice,
+    pub graphics_queue: queues::Queue,
+    pub transfer_queue: queues::Queue,
     mem_allocator: vk_mem::Allocator,
     sync_image_available: Vec<vk::Semaphore>,
     sync_may_begin_rendering: Vec<vk::Fence>,
@@ -28,7 +36,8 @@ pub struct VkContext {
     surface: vk::SurfaceKHR,
     swapchain_fn: Swapchain,
     swapchain: vk::SwapchainKHR,
-    pub image_views: Vec<vk::ImageView>
+    pub image_views: Vec<vk::ImageView>,
+    depth_image: Option<ImageWrapper>,
 }
 
 impl VkContext {
@@ -56,9 +65,8 @@ impl VkContext {
             None)
             .map_err(|e| VkError::OpFailed(format!("Error creating surface: {}", e)))?;
 
-        // Create device and queues
-        let (device, graphics_queue, transfer_queue) =
-            device::make_device_resources(core)?;
+        // Create device
+        let device = device::make_device_resources(core)?;
 
         // Create a memory allocator
         let allocator_info = vk_mem::AllocatorCreateInfo {
@@ -75,11 +83,16 @@ impl VkContext {
                 VkError::OpFailed(format!("{:?}", e))
             })?;
 
+        // Make queues
+        let graphics_queue = queues::Queue::new(&device, core.graphics_queue_family_index)?;
+        let transfer_queue = queues::Queue::new(&device, core.transfer_queue_family_index)?;
+
         let swapchain_fn = Swapchain::new(&core.instance, &device);
 
         Ok(
             Self {
                 device,
+                borrowed_physical_device_handle: core.physical_device,
                 graphics_queue,
                 transfer_queue,
                 mem_allocator,
@@ -91,9 +104,24 @@ impl VkContext {
                 surface,
                 swapchain_fn,
                 swapchain: vk::SwapchainKHR::null(),
-                image_views: vec![]
+                image_views: vec![],
+                depth_image: None
             }
         )
+    }
+
+    /// Get the dimensions of the current surface
+    pub fn get_extent(&self) -> Result<vk::Extent2D, VkError> {
+        let surface_capabilities = unsafe {
+            self.surface_fn.get_physical_device_surface_capabilities(
+                self.borrowed_physical_device_handle,
+                self.surface
+            )
+                .map_err(|e| {
+                    VkError::OpFailed(format!("{:?}", e))
+                })?
+        };
+        Ok(surface_capabilities.current_extent)
     }
 
     /// Create the swapchain; any previously-created swapchain should be destroyed first
@@ -113,6 +141,16 @@ impl VkContext {
         self.image_views.clear();
         self.image_views.append(&mut swapchain_image_views);
         self.current_image_acquired = self.image_views.len() - 1;
+
+        let extent = self.get_extent()?;
+        let depth_image = ImageWrapper::new(
+            &self,
+            ImageUsage::DepthBuffer,
+            TexturePixelFormat::Unorm16,
+            extent.width as u32,
+            extent.height as u32,
+            None)?;
+        self.depth_image = Some(depth_image);
 
         // Synchronisation objects
         self.sync_image_available.clear();
@@ -156,6 +194,9 @@ impl VkContext {
         }
         for semaphore in self.sync_image_available.iter() {
             self.device.destroy_semaphore(*semaphore, None);
+        }
+        if let Some(image) = &self.depth_image {
+            image.destroy(&self.device, &self.mem_allocator).unwrap();
         }
         for image_view in self.image_views.iter_mut() {
             self.device.destroy_image_view(*image_view, None);

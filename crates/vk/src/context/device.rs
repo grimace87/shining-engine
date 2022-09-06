@@ -2,7 +2,7 @@
 use crate::{VkCore, VkError};
 use ash::{
     vk,
-    version::{InstanceV1_0, DeviceV1_0},
+    version::{InstanceV1_0},
     Device,
     extensions::khr::{Swapchain}
 };
@@ -12,7 +12,7 @@ use std::os::raw::c_char;
 /// creates a single graphics queue and single transfer queue
 pub unsafe fn make_device_resources(
     core: &VkCore
-) -> Result<(Device, vk::Queue, vk::Queue), VkError> {
+) -> Result<Device, VkError> {
 
     // Find queue indices for graphics and transfer (ideally different but could be the same)
     let queue_family_properties = core.instance
@@ -66,9 +66,5 @@ pub unsafe fn make_device_resources(
             VkError::OpFailed(format!("{:?}", e))
         })?;
 
-    // Get queues
-    let graphics_queue = device.get_device_queue(graphics_queue_family_index, 0);
-    let transfer_queue = device.get_device_queue(transfer_queue_family_index, 0);
-
-    Ok((device, graphics_queue, transfer_queue))
+    Ok(device)
 }
