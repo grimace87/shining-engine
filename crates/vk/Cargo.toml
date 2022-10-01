@@ -29,3 +29,8 @@ harness = false
 name = "mem_test"
 path = "tests/mem_test.rs"
 harness = false
+
+[[test]]
+name = "pipeline_test"
+path = "tests/pipeline_test.rs"
+harness = false

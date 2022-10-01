@@ -127,6 +127,26 @@ impl VkContext {
         Ok(surface_capabilities.current_extent)
     }
 
+    /// Getter for the depth image
+    pub fn get_depth_image(&self) -> Option<&ImageWrapper> {
+        match &self.depth_image {
+            Some(image) => Some(image),
+            _ => None
+        }
+    }
+
+    /// Query supported surface formats for the currently selected physical device and the
+    /// current surface
+    pub unsafe fn get_surface_formats(&self) -> Result<Vec<vk::SurfaceFormatKHR>, VkError> {
+        self.surface_fn.get_physical_device_surface_formats(
+            self.borrowed_physical_device_handle,
+            self.surface
+        )
+            .map_err(|e| {
+                VkError::OpFailed(format!("{:?}", e))
+            })
+    }
+
     /// Create the swapchain; any previously-created swapchain should be destroyed first
     unsafe fn create_swapchain(&mut self, core: &VkCore) -> Result<(), VkError> {
 
