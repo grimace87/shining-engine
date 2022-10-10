@@ -6,8 +6,8 @@ mod config;
 pub use factory::StoresAsFile;
 pub use types::{Model, StaticVertex};
 
-use collada::COLLADA;
-use config::Config;
+pub use collada::COLLADA;
+pub use config::Config;
 
 use std::path::{Path, PathBuf};
 use std::fs::File;

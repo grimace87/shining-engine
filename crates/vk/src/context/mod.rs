@@ -5,9 +5,7 @@ mod swapchain;
 use crate::{
     VkError,
     VkCore,
-    ImageWrapper,
-    ImageUsage,
-    TexturePixelFormat
+    ImageWrapper
 };
 use ash::{
     Device,
@@ -18,6 +16,7 @@ use ash::{
     version::DeviceV1_0,
     vk
 };
+use resource::{ImageUsage, TexturePixelFormat};
 use raw_window_handle::HasRawWindowHandle;
 use vk_mem::AllocatorCreateFlags;
 

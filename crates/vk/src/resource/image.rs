@@ -2,9 +2,9 @@
 use crate::{
     VkError,
     context::VkContext,
-    resource::{ImageUsage, TexturePixelFormat},
     resource::buffer::BufferWrapper
 };
+use resource::{ImageUsage, TexturePixelFormat};
 use ash::{
     vk,
     Device,
