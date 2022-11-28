@@ -1,10 +1,6 @@
 
 use crate::VkError;
-use ash::{
-    Device,
-    version::DeviceV1_0,
-    vk
-};
+use ash::{Device, vk};
 
 #[derive(Copy, Clone)]
 pub struct Queue {

@@ -11,10 +11,9 @@ use ash::{
         ext::DebugUtils,
         khr::Surface
     },
-    version::InstanceV1_0,
     vk
 };
-use raw_window_handle::HasRawWindowHandle;
+use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
 
 /// FeatureDeclaration enum
 /// Platform feature requirements that may be declared by an application or component thereof in
@@ -37,17 +36,13 @@ pub struct VkCore {
 
 impl VkCore {
 
-    pub unsafe fn new(
-        window_owner: &dyn HasRawWindowHandle,
+    pub unsafe fn new<W>(
+        window_owner: &W,
         features: Vec<FeatureDeclaration>
-    ) -> Result<Self, VkError> {
+    ) -> Result<Self, VkError> where W: HasRawDisplayHandle + HasRawWindowHandle {
 
-        let entry = Entry::new()
-            .map_err(|e| {
-                VkError::OpFailed(format!("Entry creation failed: {:?}", e))
-            })?;
-
-        let instance = instance::make_instance(&entry, window_owner)?;
+        let entry = Entry::linked();
+        let instance = instance::make_instance(&entry, window_owner.raw_display_handle())?;
         let debug_utils = debug::make_debug_utils(&entry, &instance)?;
 
         // Create temporary surface and surface loader
@@ -55,7 +50,8 @@ impl VkCore {
         let surface = ash_window::create_surface(
             &entry,
             &instance,
-            window_owner,
+            window_owner.raw_display_handle(),
+            window_owner.raw_window_handle(),
             None)
             .unwrap();
 

@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-winit = "0.26.1"
-raw-window-handle = "0.3.3"
+winit = { workspace = true }
+raw-window-handle = { workspace = true }
 
 [dev-dependencies]
 window = { path = "." }

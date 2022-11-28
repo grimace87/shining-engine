@@ -6,8 +6,7 @@ use ash::{
     extensions::khr::{
         Surface,
         Swapchain
-    },
-    version::DeviceV1_0
+    }
 };
 use std::cmp::max;
 

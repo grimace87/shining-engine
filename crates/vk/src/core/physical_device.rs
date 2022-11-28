@@ -1,11 +1,7 @@
 
 use crate::core::FeatureDeclaration;
 use crate::VkError;
-use ash::{
-    vk,
-    extensions::khr::Surface,
-    version::InstanceV1_0
-};
+use ash::{vk, extensions::khr::Surface};
 
 /// Selects the physical device to use, so long as there is one that supports everything needed
 pub unsafe fn select_physical_device(

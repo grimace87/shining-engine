@@ -2,13 +2,13 @@
 use crate::{
     VkError,
     context::VkContext,
+    mem::{MemoryUsage, MemoryAllocator, MemoryAllocationCreateInfo, MemoryAllocation},
     resource::buffer::BufferWrapper
 };
 use resource::{ImageUsage, TexturePixelFormat};
 use ash::{
     vk,
-    Device,
-    version::DeviceV1_0
+    Device
 };
 
 /// ImageCreationParams struct
@@ -25,7 +25,7 @@ struct ImageCreationParams {
 /// Wraps a Vulkan image, image view, the format used by the image, and the memory allocation
 /// backing the image
 pub struct ImageWrapper {
-    allocation: vk_mem::Allocation,
+    allocation: MemoryAllocation,
     pub image: vk::Image,
     pub image_view: vk::ImageView,
     pub format: vk::Format
@@ -36,7 +36,7 @@ impl ImageWrapper {
     /// Create a new instance with nothing useful in it
     pub fn empty() -> ImageWrapper {
         ImageWrapper {
-            allocation: vk_mem::Allocation::null(),
+            allocation: MemoryAllocation::null(),
             image: vk::Image::null(),
             image_view: vk::ImageView::null(),
             format: vk::Format::UNDEFINED
@@ -165,7 +165,7 @@ impl ImageWrapper {
         width: u32,
         height: u32,
         creation_params: &ImageCreationParams
-    ) -> Result<(vk_mem::Allocation, vk::Image, vk::ImageView), VkError> {
+    ) -> Result<(MemoryAllocation, vk::Image, vk::ImageView), VkError> {
         let queue_families = [
             context.graphics_queue.queue_family_index
         ];
@@ -187,12 +187,12 @@ impl ImageWrapper {
             .usage(creation_params.usage)
             .sharing_mode(vk::SharingMode::EXCLUSIVE)
             .queue_family_indices(&queue_families)
-            .initial_layout(vk::ImageLayout::UNDEFINED);
-        let allocation_info = vk_mem::AllocationCreateInfo {
-            usage: vk_mem::MemoryUsage::GpuOnly,
-            ..Default::default()
+            .initial_layout(vk::ImageLayout::UNDEFINED)
+            .build();
+        let allocation_info = MemoryAllocationCreateInfo {
+            usage: MemoryUsage::GpuOnly
         };
-        let (image, allocation, _) = context
+        let (image, allocation) = context
             .get_mem_allocator()
             .create_image(&image_info, &allocation_info)
             .map_err(|e| {
@@ -222,13 +222,10 @@ impl ImageWrapper {
     pub unsafe fn destroy(
         &self,
         device: &Device,
-        allocator: &vk_mem::Allocator
+        allocator: &MemoryAllocator
     ) -> Result<(), VkError> {
         device.destroy_image_view(self.image_view, None);
         allocator.destroy_image(self.image, &self.allocation)
-            .map_err(|e| {
-                VkError::OpFailed(format!("Error freeing image: {:?}", e))
-            })
     }
 
     /// Initialise the image's memory with texture data; uses a staging buffer to allocate device-
@@ -256,7 +253,7 @@ impl ImageWrapper {
             context.get_mem_allocator(),
             layer_count * layer_size_bytes,
             vk::BufferUsageFlags::TRANSFER_SRC,
-            vk_mem::MemoryUsage::CpuToGpu)?;
+            MemoryUsage::CpuToGpu)?;
         for (layer_no, data) in layer_data.iter().enumerate() {
             staging_buffer.update::<u8>(
                 context.get_mem_allocator(),

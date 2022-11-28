@@ -7,7 +7,7 @@ use winit::{
     event_loop::{EventLoop, ControlFlow},
     event::{Event, KeyboardInput, WindowEvent}
 };
-use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
+use raw_window_handle::{HasRawWindowHandle, RawWindowHandle, HasRawDisplayHandle, RawDisplayHandle};
 use std::fmt::Debug;
 
 #[derive(PartialEq)]
@@ -125,6 +125,12 @@ impl<T: 'static + Send + Debug> Window<T> {
                 _ => ()
             }
         });
+    }
+}
+
+unsafe impl<T: Send + Debug> HasRawDisplayHandle for Window<T> {
+    fn raw_display_handle(&self) -> RawDisplayHandle {
+        self.window.raw_display_handle()
     }
 }
 

@@ -5,7 +5,8 @@ mod swapchain;
 use crate::{
     VkError,
     VkCore,
-    ImageWrapper
+    ImageWrapper,
+    mem::{MemoryAllocator, MemoryAllocatorCreateInfo}
 };
 use ash::{
     Device,
@@ -13,12 +14,10 @@ use ash::{
         Surface,
         Swapchain
     },
-    version::DeviceV1_0,
     vk
 };
 use resource::{ImageUsage, TexturePixelFormat};
-use raw_window_handle::HasRawWindowHandle;
-use vk_mem::AllocatorCreateFlags;
+use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
 
 /// Wrap logical device along with Vulkan components that can exist for the life of a window
 pub struct VkContext {
@@ -26,7 +25,7 @@ pub struct VkContext {
     borrowed_physical_device_handle: vk::PhysicalDevice,
     pub graphics_queue: queues::Queue,
     pub transfer_queue: queues::Queue,
-    mem_allocator: vk_mem::Allocator,
+    mem_allocator: MemoryAllocator,
     sync_image_available: Vec<vk::Semaphore>,
     sync_may_begin_rendering: Vec<vk::Fence>,
     sync_rendering_finished: Vec<vk::Semaphore>,
@@ -41,26 +40,31 @@ pub struct VkContext {
 
 impl VkContext {
 
-    pub fn new(core: &VkCore, window_owner: &dyn HasRawWindowHandle) -> Result<Self, VkError> {
+    pub fn new<T>(core: &VkCore, window: &T) -> Result<Self, VkError>
+        where T: HasRawDisplayHandle + HasRawWindowHandle
+    {
         Ok(unsafe {
-            let mut context = Self::new_with_surface_without_swapchain(core, window_owner)?;
+            let mut context = Self::new_with_surface_without_swapchain(core, window)?;
             context.create_swapchain(core)?;
             context
         })
     }
 
     /// Create a new instance, but not yet creating the swapchain. For internal use.
-    unsafe fn new_with_surface_without_swapchain(
+    unsafe fn new_with_surface_without_swapchain<T>(
         core: &VkCore,
-        window_owner: &dyn HasRawWindowHandle
-    ) -> Result<VkContext, VkError> {
+        window: &T
+    ) -> Result<VkContext, VkError>
+        where T: HasRawDisplayHandle + HasRawWindowHandle
+    {
 
         // Create surface and surface loader
         let surface_fn = Surface::new(&core.function_loader, &core.instance);
         let surface = ash_window::create_surface(
             &core.function_loader,
             &core.instance,
-            window_owner,
+            window.raw_display_handle(),
+            window.raw_window_handle(),
             None)
             .map_err(|e| VkError::OpFailed(format!("Error creating surface: {}", e)))?;
 
@@ -68,19 +72,11 @@ impl VkContext {
         let device = device::make_device_resources(core)?;
 
         // Create a memory allocator
-        let allocator_info = vk_mem::AllocatorCreateInfo {
+        let allocator_info = MemoryAllocatorCreateInfo {
             physical_device: core.physical_device,
-            device: device.clone(),
-            instance: core.instance.clone(),
-            flags: AllocatorCreateFlags::NONE,
-            preferred_large_heap_block_size: 0,
-            frame_in_use_count: 0,
-            heap_size_limits: None
+            device: device.clone()
         };
-        let mem_allocator = vk_mem::Allocator::new(&allocator_info)
-            .map_err(|e| {
-                VkError::OpFailed(format!("{:?}", e))
-            })?;
+        let mem_allocator = MemoryAllocator::new(allocator_info);
 
         // Make queues
         let graphics_queue = queues::Queue::new(&device, core.graphics_queue_family_index)?;
@@ -204,7 +200,7 @@ impl VkContext {
     }
 
     /// Getter for the memory allocator
-    pub fn get_mem_allocator(&self) -> &vk_mem::Allocator {
+    pub fn get_mem_allocator(&self) -> &MemoryAllocator {
         &self.mem_allocator
     }
 }

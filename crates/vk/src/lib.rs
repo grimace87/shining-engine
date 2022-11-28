@@ -1,5 +1,6 @@
 mod core;
 mod context;
+mod mem;
 mod resource;
 
 pub use crate::core::VkCore;

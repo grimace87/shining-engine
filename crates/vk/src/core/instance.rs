@@ -4,10 +4,9 @@ use ash::{
     vk,
     Entry,
     Instance,
-    version::EntryV1_0,
     extensions::ext::DebugUtils
 };
-use raw_window_handle::HasRawWindowHandle;
+use raw_window_handle::RawDisplayHandle;
 use std::{
     ffi::{
         CString,
@@ -21,7 +20,7 @@ const DEBUG_LAYER_NAME: &'static str = "VK_LAYER_KHRONOS_validation";
 /// Creates the instance, enabling any required extensions and layers
 pub unsafe fn make_instance(
     entry: &Entry,
-    window_owner: &dyn HasRawWindowHandle
+    display_handle: RawDisplayHandle
 ) -> Result<Instance, VkError> {
 
     // App info
@@ -29,14 +28,14 @@ pub unsafe fn make_instance(
     let app_name = CString::new("Shining Engine Sample").unwrap();
     let app_info = vk::ApplicationInfo::builder()
         .application_name(&app_name)
-        .application_version(vk::make_version(0, 1, 0))
+        .application_version(vk::make_api_version(0, 0, 1, 0))
         .engine_name(&engine_name)
-        .engine_version(vk::make_version(0, 0, 1))
-        .api_version(vk::make_version(1, 0, 0));
+        .engine_version(vk::make_api_version(0, 0, 0, 1))
+        .api_version(vk::make_api_version(0, 1, 0, 0));
 
     // Instance extensions and validation layers
     let mut instance_extensions = get_debug_instance_extensions(entry)?;
-    let required_platform_extensions = get_window_instance_extensions(window_owner)?;
+    let required_platform_extensions = get_window_instance_extensions(display_handle)?;
     instance_extensions.extend(&required_platform_extensions);
 
     // Validation layers
@@ -60,15 +59,15 @@ pub unsafe fn make_instance(
 
 /// Get the required extensions for windowing - this will be handled by ash_window
 fn get_window_instance_extensions(
-    window_owner: &dyn HasRawWindowHandle
+    display_handle: RawDisplayHandle
 ) -> Result<Vec<*const c_char>, VkError> {
     let extensions_as_c_str =
-        ash_window::enumerate_required_extensions(window_owner)
+        ash_window::enumerate_required_extensions(display_handle)
             .map_err(|e| {
                 VkError::OpFailed(format!("{:?}", e))
             })?
             .iter()
-            .map(|ext| ext.as_ptr())
+            .map(|ext| *ext)
             .collect::<Vec<*const c_char>>();
     Ok(extensions_as_c_str)
 }
@@ -77,7 +76,7 @@ fn get_window_instance_extensions(
 unsafe fn get_debug_instance_extensions(entry: &Entry) -> Result<Vec<*const c_char>, VkError> {
     if cfg!(debug_assertions) {
         let debug_extension = DebugUtils::name();
-        let supported_extensions = entry.enumerate_instance_extension_properties()
+        let supported_extensions = entry.enumerate_instance_extension_properties(None)
             .map_err(|e| {
                 VkError::OpFailed(format!("Failed to enumerate instance extensions: {:?}", e))
             })?;

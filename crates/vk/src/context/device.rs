@@ -1,11 +1,6 @@
 
 use crate::{VkCore, VkError};
-use ash::{
-    vk,
-    version::{InstanceV1_0},
-    Device,
-    extensions::khr::{Swapchain}
-};
+use ash::{vk, Device, extensions::khr::{Swapchain}};
 use std::os::raw::c_char;
 
 /// All device-related initialisation - chooses a physical device, creates the logical device, and
