@@ -19,6 +19,8 @@ use ash::{
 use resource::{ImageUsage, TexturePixelFormat};
 use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
 
+pub use queues::Queue;
+
 /// Wrap logical device along with Vulkan components that can exist for the life of a window
 pub struct VkContext {
     pub device: Device,
@@ -71,16 +73,17 @@ impl VkContext {
         // Create device
         let device = device::make_device_resources(core)?;
 
-        // Create a memory allocator
-        let allocator_info = MemoryAllocatorCreateInfo {
-            physical_device: core.physical_device,
-            device: device.clone()
-        };
-        let mem_allocator = MemoryAllocator::new(allocator_info);
-
         // Make queues
         let graphics_queue = queues::Queue::new(&device, core.graphics_queue_family_index)?;
         let transfer_queue = queues::Queue::new(&device, core.transfer_queue_family_index)?;
+
+        // Create a memory allocator
+        let allocator_info = MemoryAllocatorCreateInfo {
+            physical_device: core.physical_device,
+            device: device.clone(),
+            instance: core.instance.clone()
+        };
+        let mem_allocator = MemoryAllocator::new(allocator_info)?;
 
         let swapchain_fn = Swapchain::new(&core.instance, &device);
 
