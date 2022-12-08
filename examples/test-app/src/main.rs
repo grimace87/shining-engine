@@ -4,6 +4,8 @@ use window::{
     WindowEventHandler, WindowStateEvent, Window, MessageProxy, WindowCommand,
     KeyCode, KeyState
 };
+use vk::{VkCore, VkContext};
+use std::fmt::Debug;
 
 #[derive(PartialEq, Debug)]
 pub enum TestAppMessage {
@@ -15,7 +17,11 @@ struct QuitsQuicklyApp {
 }
 
 impl QuitsQuicklyApp {
-    fn new(message_proxy: MessageProxy<WindowCommand<TestAppMessage>>) -> Self {
+    fn new<T: Send + Debug>(window: &Window<T>, message_proxy: MessageProxy<WindowCommand<TestAppMessage>>) -> Self {
+        unsafe {
+            let core = VkCore::new(window, vec![]).unwrap();
+            VkContext::new(&core, window).unwrap();
+        }
         Self { message_proxy }
     }
 }
@@ -50,6 +56,6 @@ impl RenderEventHandler for QuitsQuicklyApp {
 fn main() {
     let window = Window::<TestAppMessage>::new("Demo App");
     let message_proxy = window.new_message_proxy();
-    let app = QuitsQuicklyApp::new(message_proxy.clone());
+    let app = QuitsQuicklyApp::new(&window, message_proxy.clone());
     window.run(app);
 }

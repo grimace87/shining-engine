@@ -1,6 +1,9 @@
 
 use crate::VkError;
-use ash::{Device, vk};
+use ash::{
+    Device,
+    vk
+};
 
 #[derive(Copy, Clone)]
 pub struct Queue {
@@ -31,10 +34,6 @@ impl Queue {
             queue,
             command_buffer_pool
         })
-    }
-
-    pub unsafe fn destroy(&self, device: &Device) {
-        device.destroy_command_pool(self.command_buffer_pool, None);
     }
 
     pub unsafe fn allocate_command_buffer(&self, device: &Device) -> Result<vk::CommandBuffer, VkError> {
@@ -72,5 +71,9 @@ impl Queue {
         device.free_command_buffers(
             self.command_buffer_pool,
             &[command_buffer]);
+    }
+
+    pub unsafe fn destroy(&self, device: &Device) {
+        device.destroy_command_pool(self.command_buffer_pool, None);
     }
 }

@@ -77,11 +77,17 @@ pub struct MemoryAllocation {
 }
 
 impl MemoryAllocation {
+
     pub fn null() -> Self {
         Self {
             memory: vk::DeviceMemory::null(),
             size: 0
         }
+    }
+
+    #[inline]
+    pub fn get_memory(&self) -> vk::DeviceMemory {
+        self.memory
     }
 }
 

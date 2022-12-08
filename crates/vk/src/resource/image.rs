@@ -207,6 +207,12 @@ impl ImageWrapper {
             .map_err(|e| {
                 VkError::OpFailed(format! ("Allocation error: {:?}", e))
             })?;
+
+        context.device.bind_image_memory(image, allocation.get_memory(), 0)
+            .map_err(|e| {
+                VkError::OpFailed(format! ("Error binding memory to image: {:?}", e))
+            })?;
+
         let subresource_range = vk::ImageSubresourceRange::builder()
             .aspect_mask(creation_params.aspect)
             .base_mip_level(0)
