@@ -25,8 +25,8 @@ pub use queues::Queue;
 pub struct VkContext {
     pub device: Device,
     borrowed_physical_device_handle: vk::PhysicalDevice,
-    pub graphics_queue: queues::Queue,
-    pub transfer_queue: queues::Queue,
+    pub graphics_queue: Queue,
+    pub transfer_queue: Queue,
     mem_allocator: MemoryAllocator,
     sync_image_available: Vec<vk::Semaphore>,
     sync_may_begin_rendering: Vec<vk::Fence>,
@@ -74,14 +74,19 @@ impl VkContext {
         let device = device::make_device_resources(core)?;
 
         // Make queues
-        let graphics_queue = queues::Queue::new(&device, core.graphics_queue_family_index)?;
-        let transfer_queue = queues::Queue::new(&device, core.transfer_queue_family_index)?;
+        let graphics_queue = Queue::new(&device, core.graphics_queue_family_index)?;
+        let transfer_queue = Queue::new(&device, core.transfer_queue_family_index)?;
+
+        // Allocate a command buffer for the transfer queue
+        let transfer_command_buffer = transfer_queue
+            .allocate_command_buffer(&device)?;
 
         // Create a memory allocator
         let allocator_info = MemoryAllocatorCreateInfo {
             physical_device: core.physical_device,
             device: device.clone(),
-            instance: core.instance.clone()
+            instance: core.instance.clone(),
+            transfer_command_buffer
         };
         let mem_allocator = MemoryAllocator::new(allocator_info)?;
 
@@ -203,8 +208,8 @@ impl VkContext {
     }
 
     /// Getter for the memory allocator
-    pub fn get_mem_allocator(&self) -> &MemoryAllocator {
-        &self.mem_allocator
+    pub fn get_mem_allocator(&self) -> (&MemoryAllocator, &Queue) {
+        (&self.mem_allocator, &self.transfer_queue)
     }
 }
 
@@ -214,7 +219,9 @@ impl Drop for VkContext {
         unsafe {
             self.destroy_swapchain_resources();
             self.surface_fn.destroy_surface(self.surface, None);
-            self.mem_allocator.destroy();
+            self.mem_allocator.destroy(&self.transfer_queue);
+            self.transfer_queue.destroy(&self.device);
+            self.graphics_queue.destroy(&self.device);
             self.device.destroy_device(None);
         }
     }

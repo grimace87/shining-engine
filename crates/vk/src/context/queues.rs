@@ -33,6 +33,10 @@ impl Queue {
         })
     }
 
+    pub unsafe fn destroy(&self, device: &Device) {
+        device.destroy_command_pool(self.command_buffer_pool, None);
+    }
+
     pub unsafe fn allocate_command_buffer(&self, device: &Device) -> Result<vk::CommandBuffer, VkError> {
         let command_buffer_alloc_info = vk::CommandBufferAllocateInfo::builder()
             .command_pool(self.command_buffer_pool)

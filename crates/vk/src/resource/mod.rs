@@ -18,13 +18,14 @@ impl ResourceLoader for crate::VkContext {
 
     fn load_model(&self, raw_data: &VboCreationData) -> Result<BufferWrapper, VkError> {
         let buffer = unsafe {
+            let (allocator, _) = self.get_mem_allocator();
             let mut buffer = BufferWrapper::new(
-                self.get_mem_allocator(),
+                allocator,
                 raw_data.vertex_count * std::mem::size_of::<StaticVertex>(), // TODO - different vertex types?
                 vk::BufferUsageFlags::VERTEX_BUFFER,
                 MemoryUsage::CpuToGpu)?; // TODO - staging buffer?
             buffer.update::<StaticVertex>(
-                self.get_mem_allocator(),
+                allocator,
                 0,
                 raw_data.vertex_data.as_ptr(),
                 raw_data.vertex_data.len())?;
@@ -34,7 +35,10 @@ impl ResourceLoader for crate::VkContext {
     }
 
     fn release_model(&mut self, model: &BufferWrapper) -> Result<(), VkError> {
-        unsafe { model.destroy(self.get_mem_allocator()) }
+        unsafe {
+            let (allocator, _) = self.get_mem_allocator();
+            model.destroy(allocator)
+        }
     }
 
     fn load_texture(&self, raw_data: &TextureCreationData) -> Result<ImageWrapper, VkError> {
@@ -62,7 +66,10 @@ impl ResourceLoader for crate::VkContext {
     }
 
     fn release_texture(&mut self, texture: &ImageWrapper) -> Result<(), VkError> {
-        unsafe { texture.destroy(&self.device, self.get_mem_allocator()) }
+        unsafe {
+            let (allocator, _) = self.get_mem_allocator();
+            texture.destroy(&self.device, allocator)
+        }
     }
 
     #[inline]
