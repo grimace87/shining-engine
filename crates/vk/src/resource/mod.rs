@@ -5,7 +5,6 @@ pub mod util;
 use crate::BufferWrapper;
 use crate::ImageWrapper;
 use crate::VkError;
-use crate::mem::MemoryUsage;
 use model::StaticVertex;
 use resource::{ResourceLoader, VboCreationData, TextureCreationData};
 use ash::vk;
@@ -22,8 +21,7 @@ impl ResourceLoader for crate::VkContext {
             let mut buffer = BufferWrapper::new(
                 allocator,
                 raw_data.vertex_count * std::mem::size_of::<StaticVertex>(), // TODO - different vertex types?
-                vk::BufferUsageFlags::VERTEX_BUFFER,
-                MemoryUsage::CpuToGpu)?; // TODO - staging buffer?
+                vk::BufferUsageFlags::VERTEX_BUFFER)?; // TODO - staging buffer?
             buffer.update::<StaticVertex>(
                 allocator,
                 0,

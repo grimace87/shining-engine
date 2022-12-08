@@ -1,6 +1,6 @@
 
 use crate::VkError;
-use crate::mem::{MemoryUsage, MemoryAllocator, MemoryAllocationCreateInfo, MemoryAllocation};
+use crate::mem::{MemoryAllocator, MemoryAllocation, ManagesBufferMemory};
 use ash::vk;
 
 /// BufferWrapper struct
@@ -16,18 +16,14 @@ impl BufferWrapper {
     pub unsafe fn new(
         allocator: &MemoryAllocator,
         size_bytes: usize,
-        buffer_usage: vk::BufferUsageFlags,
-        mem_usage: MemoryUsage
+        buffer_usage: vk::BufferUsageFlags
     ) -> Result<BufferWrapper, VkError> {
         let buffer_create_info = vk::BufferCreateInfo::builder()
             .size(size_bytes as u64)
             .usage(buffer_usage)
             .build();
-        let memory_create_info = MemoryAllocationCreateInfo {
-            usage: mem_usage
-        };
         let (buffer, allocation) = allocator
-            .create_buffer(&buffer_create_info, &memory_create_info)?;
+            .create_buffer(&buffer_create_info)?;
 
         Ok(BufferWrapper {
             buffer,

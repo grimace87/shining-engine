@@ -2,7 +2,7 @@
 use crate::{
     VkError,
     context::VkContext,
-    mem::{MemoryUsage, MemoryAllocator, MemoryAllocationCreateInfo, MemoryAllocation},
+    mem::{MemoryAllocator, MemoryAllocation, ManagesImageMemory, ManagesMemoryTransfers},
     resource::buffer::BufferWrapper
 };
 use resource::{ImageUsage, TexturePixelFormat};
@@ -201,12 +201,9 @@ impl ImageWrapper {
             .queue_family_indices(&queue_families)
             .initial_layout(initial_layout)
             .build();
-        let allocation_info = MemoryAllocationCreateInfo {
-            usage: MemoryUsage::GpuOnly
-        };
         let (allocator, _) = context.get_mem_allocator();
         let (image, allocation) = allocator
-            .create_image(&image_info, &allocation_info)
+            .create_image(&image_info)
             .map_err(|e| {
                 VkError::OpFailed(format! ("Allocation error: {:?}", e))
             })?;
