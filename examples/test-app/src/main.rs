@@ -28,14 +28,14 @@ impl QuitsQuicklyApp {
 
 impl WindowEventHandler<TestAppMessage> for QuitsQuicklyApp {
 
-    fn on_window_state_event(&self, event: WindowStateEvent) {
+    fn on_window_state_event(&mut self, event: WindowStateEvent) {
         if let WindowStateEvent::KeyEvent(KeyCode::Escape, KeyState::Pressed) = event {
             self.message_proxy.send_event(WindowCommand::RequestClose)
                 .unwrap();
         }
     }
 
-    fn on_window_custom_event(&self, _event: TestAppMessage) {}
+    fn on_window_custom_event(&mut self, _event: TestAppMessage) {}
 }
 
 impl RenderEventHandler for QuitsQuicklyApp {

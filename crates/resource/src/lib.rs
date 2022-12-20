@@ -57,7 +57,7 @@ pub trait ResourceLoader {
     type TextureHandle;
     type LoadError;
 
-    fn load_model(&self, raw_data: &VboCreationData) -> Result<Self::VertexBufferHandle, Self::LoadError>;
+    fn load_model(&self, raw_data: &VboCreationData) -> Result<(Self::VertexBufferHandle, usize), Self::LoadError>;
     fn release_model(&mut self, model: &Self::VertexBufferHandle) -> Result<(), Self::LoadError>;
 
     fn load_texture(&self, raw_data: &TextureCreationData) -> Result<Self::TextureHandle, Self::LoadError>;

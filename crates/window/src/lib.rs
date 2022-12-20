@@ -34,8 +34,8 @@ pub enum RenderCycleEvent {
 }
 
 pub trait WindowEventHandler<T: 'static> {
-    fn on_window_state_event(&self, event: WindowStateEvent);
-    fn on_window_custom_event(&self, event: T);
+    fn on_window_state_event(&mut self, event: WindowStateEvent);
+    fn on_window_custom_event(&mut self, event: T);
 }
 
 pub trait RenderEventHandler {
@@ -62,8 +62,9 @@ impl<T: 'static + Send + Debug> Window<T> {
         self.event_loop.create_proxy()
     }
 
-    pub fn run<A: 'static + WindowEventHandler<T> + RenderEventHandler>(self, app: A) {
+    pub fn run<A: 'static + WindowEventHandler<T> + RenderEventHandler>(self, mut app: A) {
         let running_window_id = self.window.id();
+        app.on_window_state_event(WindowStateEvent::Starting);
         self.event_loop.run(move |event, _, control_flow| {
             *control_flow = ControlFlow::Wait;
             match event {

@@ -3,7 +3,7 @@ use crate::{ResourceLoader, RawResourceBearer};
 use std::collections::HashMap;
 
 pub struct ResourceManager<L: ResourceLoader> {
-    loaded_models: HashMap<u32, L::VertexBufferHandle>,
+    loaded_models: HashMap<u32, (L::VertexBufferHandle, usize)>,
     loaded_textures: HashMap<u32, L::TextureHandle>
 }
 
@@ -28,8 +28,8 @@ impl<L: ResourceLoader> ResourceManager<L> {
                 continue;
             }
             let raw_data = bearer.get_raw_model_data(*id);
-            let loaded_model = loader.load_model(&raw_data)?;
-            self.loaded_models.insert(*id, loaded_model);
+            let (model_data, vertex_count) = loader.load_model(&raw_data)?;
+            self.loaded_models.insert(*id, (model_data, vertex_count));
         }
 
         let texture_ids = bearer.get_texture_resource_ids();
@@ -45,9 +45,25 @@ impl<L: ResourceLoader> ResourceManager<L> {
         Ok(())
     }
 
-    pub fn get_vbo_handle(&self, id: u32) -> Result<&L::VertexBufferHandle, L::LoadError> {
-        self.loaded_models.get(&id)
-            .ok_or_else(|| L::make_error(format!("Error: Model {} is not loaded", id)))
+    pub fn free_resources(&mut self, loader: &mut L) -> Result<(), L::LoadError> {
+
+        for (_, (handle, _)) in self.loaded_models.iter() {
+            loader.release_model(handle)?;
+        }
+        self.loaded_models.clear();
+
+        for (_, handle) in self.loaded_textures.iter() {
+            loader.release_texture(handle)?;
+        }
+        self.loaded_textures.clear();
+
+        Ok(())
+    }
+
+    pub fn get_vbo_handle(&self, id: u32) -> Result<(&L::VertexBufferHandle, usize), L::LoadError> {
+        let (model_data, vertex_count) = self.loaded_models.get(&id)
+            .ok_or_else(|| L::make_error(format!("Error: Model {} is not loaded", id)))?;
+        Ok((model_data, *vertex_count))
     }
 
     pub fn get_texture_handle(&self, id: u32) -> Result<&L::TextureHandle, L::LoadError> {

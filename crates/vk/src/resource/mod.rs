@@ -15,7 +15,7 @@ impl ResourceLoader for crate::VkContext {
     type TextureHandle = ImageWrapper;
     type LoadError = VkError;
 
-    fn load_model(&self, raw_data: &VboCreationData) -> Result<BufferWrapper, VkError> {
+    fn load_model(&self, raw_data: &VboCreationData) -> Result<(BufferWrapper, usize), VkError> {
         let buffer = unsafe {
             let (allocator, _) = self.get_mem_allocator();
             let mut buffer = BufferWrapper::new(
@@ -29,7 +29,7 @@ impl ResourceLoader for crate::VkContext {
                 raw_data.vertex_data.len())?;
             buffer
         };
-        Ok(buffer)
+        Ok((buffer, raw_data.vertex_count))
     }
 
     fn release_model(&mut self, model: &BufferWrapper) -> Result<(), VkError> {

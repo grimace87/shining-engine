@@ -21,14 +21,14 @@ impl QuitsQuicklyApp {
 
 impl WindowEventHandler<TestAppMessage> for QuitsQuicklyApp {
 
-    fn on_window_state_event(&self, event: WindowStateEvent) {
+    fn on_window_state_event(&mut self, event: WindowStateEvent) {
         if event == WindowStateEvent::FocusGained {
             self.message_proxy.send_event(WindowCommand::Custom(TestAppMessage::RequestQuit))
                 .unwrap();
         }
     }
 
-    fn on_window_custom_event(&self, event: TestAppMessage) {
+    fn on_window_custom_event(&mut self, event: TestAppMessage) {
         if event == TestAppMessage::RequestQuit {
             self.message_proxy.send_event(WindowCommand::RequestClose)
                 .unwrap();

@@ -2,8 +2,7 @@
 use crate::{
     VkError,
     context::VkContext,
-    mem::{MemoryAllocator, MemoryAllocation, ManagesImageMemory, ManagesMemoryTransfers},
-    resource::buffer::BufferWrapper
+    mem::{MemoryAllocator, MemoryAllocation, ManagesImageMemory, ManagesMemoryTransfers}
 };
 use resource::{ImageUsage, TexturePixelFormat};
 use ash::{
