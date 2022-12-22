@@ -29,7 +29,8 @@ pub trait ManagesImageMemory {
 
     unsafe fn create_image(
         &self,
-        image_info: &vk::ImageCreateInfo
+        image_info: &vk::ImageCreateInfo,
+        for_staging: bool
     ) -> Result<(vk::Image, MemoryAllocation), VkError>;
 
     unsafe fn destroy_image(

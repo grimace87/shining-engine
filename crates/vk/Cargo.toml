@@ -16,6 +16,16 @@ vk = { path = "." }
 window = { path = "../window" }
 
 [[test]]
-name = "feature_test"
-path = "tests/feature_test.rs"
+name = "core_test"
+path = "tests/core_test.rs"
+harness = false
+
+[[test]]
+name = "context_test"
+path = "tests/context_test.rs"
+harness = false
+
+[[test]]
+name = "mem_test"
+path = "tests/mem_test.rs"
 harness = false

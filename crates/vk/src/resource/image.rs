@@ -202,7 +202,7 @@ impl ImageWrapper {
             .build();
         let (allocator, _) = context.get_mem_allocator();
         let (image, allocation) = allocator
-            .create_image(&image_info)
+            .create_image(&image_info, creation_params.pre_initialised)
             .map_err(|e| {
                 VkError::OpFailed(format! ("Allocation error: {:?}", e))
             })?;

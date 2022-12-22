@@ -17,9 +17,14 @@ impl ManagesBufferMemory for MemoryAllocator {
                 VkError::OpFailed(format!("Error creating buffer: {:?}", e))
             })?;
 
+        // TODO - Use staging buffer properly
+        let memory_type = self.allocation_parameters
+            .memory_type_staging_buffer
+            .unwrap_or_else(|| self.allocation_parameters.memory_type_bulk_performance);
         let requirements = self.device.get_buffer_memory_requirements(buffer);
         let allocate_info = vk::MemoryAllocateInfo::builder()
-            .allocation_size(requirements.size);
+            .allocation_size(requirements.size)
+            .memory_type_index(memory_type);
         let memory = self.device.allocate_memory(&allocate_info, None)
             .map_err(|e| {
                 VkError::OpFailed(format!("Error allocating buffer memory: {:?}", e))
