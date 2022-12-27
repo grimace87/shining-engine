@@ -224,19 +224,21 @@ impl RenderpassWrapper {
             }
         ];
 
-        // TODO - Depth attachment is optional
         let depth_attachment_ref = vk::AttachmentReference {
             attachment: 1,
             layout: vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL
         };
-
-        let subpasses = [
-            vk::SubpassDescription::builder()
+        let subpasses = {
+            let mut subpass_description = vk::SubpassDescription::builder()
                 .color_attachments(&color_attachment_refs)
-                .depth_stencil_attachment(&depth_attachment_ref)
-                .pipeline_bind_point(vk::PipelineBindPoint::GRAPHICS)
-                .build()
-        ];
+                .pipeline_bind_point(vk::PipelineBindPoint::GRAPHICS);
+            if target.depth_texture.is_some() {
+                [subpass_description.depth_stencil_attachment(&depth_attachment_ref).build()]
+            } else {
+                [subpass_description.build()]
+            }
+        };
+
         let subpass_dependencies = [
             vk::SubpassDependency::builder()
                 .src_subpass(vk::SUBPASS_EXTERNAL)

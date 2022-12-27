@@ -15,6 +15,7 @@ use window::{
     WindowEventHandler, WindowStateEvent, Window, MessageProxy, WindowCommand
 };
 use std::fmt::Debug;
+use vk_shader_macros::include_glsl;
 
 use model::{COLLADA, Config, StaticVertex};
 use resource::{
@@ -29,6 +30,9 @@ const SCENE_MODEL_BYTES: &[u8] =
 const TEXTURE_INDEX_TERRAIN: u32 = 0;
 const TERRAIN_TEXTURE_BYTES: &[u8] =
     include_bytes!("../../../resources/test/textures/simple_outdoor_texture.jpg");
+
+const VERTEX_SHADER: &[u32] = include_glsl!("../../resources/test/shaders/simple.vert");
+const FRAGMENT_SHADER: &[u32] = include_glsl!("../../resources/test/shaders/simple.frag");
 
 struct SomeUniformBuffer {
     pub x: f32,
@@ -136,8 +140,8 @@ impl VulkanTestApp {
             context,
             resource_manager,
             &renderpass,
-            vertex_shader,
-            fragment_shader,
+            VERTEX_SHADER,
+            FRAGMENT_SHADER,
             VBO_INDEX_SCENE,
             std::mem::size_of::<StaticVertex>() as u32,
             std::mem::size_of::<SomeUniformBuffer>(),

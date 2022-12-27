@@ -69,8 +69,8 @@ impl PipelineWrapper {
         context: &VkContext,
         resource_manager: &ResourceManager<VkContext>,
         renderpass_wrapper: &RenderpassWrapper,
-        vertex_shader_spirv: Vec<u32>,
-        fragment_shader_spirv: Vec<u32>,
+        vertex_shader_spirv: &[u32],
+        fragment_shader_spirv: &[u32],
         vbo_index: u32,
         vbo_stride_bytes: u32,
         ubo_size_bytes: usize,
@@ -83,12 +83,12 @@ impl PipelineWrapper {
 
         // Make shader modules
         let vertex_shader_create_info = vk::ShaderModuleCreateInfo::builder()
-            .code(vertex_shader_spirv.as_slice());
+            .code(vertex_shader_spirv);
         let vertex_shader_module = context.device
             .create_shader_module(&vertex_shader_create_info, None)
             .map_err(|e| VkError::OpFailed(format!("{:?}", e)))?;
         let fragment_shader_create_info = vk::ShaderModuleCreateInfo::builder()
-            .code(fragment_shader_spirv.as_slice());
+            .code(fragment_shader_spirv);
         let fragment_shader_module = context.device
             .create_shader_module(&fragment_shader_create_info, None)
             .map_err(|e| VkError::OpFailed(format!("{:?}", e)))?;
