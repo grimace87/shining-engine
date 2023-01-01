@@ -27,11 +27,17 @@ pub trait ManagesBufferMemory {
 /// Trait indicating that this type can create images and back them with memory
 pub trait ManagesImageMemory {
 
-    unsafe fn create_image(
+    unsafe fn back_image_memory(
         &self,
-        image_info: &vk::ImageCreateInfo,
-        for_staging: bool
-    ) -> Result<(vk::Image, MemoryAllocation), VkError>;
+        transfer_queue: &Queue,
+        image: &vk::Image,
+        aspect: vk::ImageAspectFlags,
+        width: u32,
+        height: u32,
+        init_layer_data: Option<&[Vec<u8>]>,
+        initialising_layout: vk::ImageLayout,
+        expected_layout: vk::ImageLayout
+    ) -> Result<MemoryAllocation, VkError>;
 
     unsafe fn destroy_image(
         &self,
@@ -44,12 +50,23 @@ pub trait ManagesImageMemory {
 /// staging buffers and layout transitions as needed to produce ready-to-go textures
 pub trait ManagesMemoryTransfers {
 
+    unsafe fn transition_image_layout(
+        &self,
+        transfer_queue: &Queue,
+        image: &vk::Image,
+        aspect: vk::ImageAspectFlags,
+        old_layout: vk::ImageLayout,
+        new_layout: vk::ImageLayout
+    ) -> Result<(), VkError>;
+
     unsafe fn transfer_data_to_new_texture(
         &self,
         transfer_queue: &Queue,
         width: u32,
         height: u32,
         image_dst: &vk::Image,
+        aspect: vk::ImageAspectFlags,
+        expected_layout: vk::ImageLayout,
         allocation: &MemoryAllocation,
         layer_data: &[Vec<u8>]
     ) -> Result<(), VkError>;
@@ -58,6 +75,8 @@ pub trait ManagesMemoryTransfers {
         &self,
         transfer_queue: &Queue,
         image_dst: &vk::Image,
+        aspect: vk::ImageAspectFlags,
+        expected_layout: vk::ImageLayout,
         allocation: &MemoryAllocation,
         layer_data: &[Vec<u8>]
     ) -> Result<(), VkError>;
@@ -68,6 +87,8 @@ pub trait ManagesMemoryTransfers {
         width: u32,
         height: u32,
         image_dst: &vk::Image,
+        aspect: vk::ImageAspectFlags,
+        expected_layout: vk::ImageLayout,
         layer_data: &[Vec<u8>]
     ) -> Result<(), VkError>;
 }

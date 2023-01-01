@@ -8,12 +8,83 @@ use ash::vk;
 
 impl ManagesMemoryTransfers for MemoryAllocator {
 
+    unsafe fn transition_image_layout(
+        &self,
+        transfer_queue: &Queue,
+        image: &vk::Image,
+        aspect: vk::ImageAspectFlags,
+        old_layout: vk::ImageLayout,
+        new_layout: vk::ImageLayout
+    ) -> Result<(), VkError> {
+
+        // Allocate a single-use command buffer and begin recording
+        let command_begin_info = vk::CommandBufferBeginInfo::builder()
+            .flags(vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT);
+        self.device.begin_command_buffer(self.transfer_command_buffer, &command_begin_info)
+            .map_err(|e| {
+                VkError::OpFailed(format!("Error starting copy command buffer: {:?}", e))
+            })?;
+
+        // Memory dependency - move to final image layout
+        let barrier = vk::ImageMemoryBarrier::builder()
+            .image(*image)
+            .src_access_mask(vk::AccessFlags::empty())
+            .dst_access_mask(vk::AccessFlags::MEMORY_READ)
+            .old_layout(old_layout)
+            .new_layout(new_layout)
+            .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
+            .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
+            .subresource_range(vk::ImageSubresourceRange {
+                aspect_mask: aspect,
+                base_mip_level: 0,
+                level_count: 1,
+                base_array_layer: 0,
+                layer_count: vk::REMAINING_ARRAY_LAYERS
+            })
+            .build();
+        self.device.cmd_pipeline_barrier(
+            self.transfer_command_buffer,
+            vk::PipelineStageFlags::TOP_OF_PIPE,
+            vk::PipelineStageFlags::TRANSFER,
+            vk::DependencyFlags::empty(),
+            &[],
+            &[],
+            &[barrier]
+        );
+
+        // Finish recording commands, create a fence, run the command, wait for fence, clean up
+        self.device.end_command_buffer(self.transfer_command_buffer)
+            .map_err(|e| {
+                VkError::OpFailed(format!("Error ending command buffer: {:?}", e))
+            })?;
+        let fence = self.device
+            .create_fence(&vk::FenceCreateInfo::default(), None)
+            .map_err(|e| {
+                VkError::OpFailed(format!("Error creating fence: {:?}", e))
+            })?;
+        transfer_queue.submit_command_buffer(
+            &self.device,
+            &self.transfer_command_buffer,
+            &fence)?;
+        self.device
+            .wait_for_fences(&[fence], true, u64::MAX)
+            .map_err(|e| {
+                VkError::OpFailed(format!("Error waiting for fence: {:?}", e))
+            })?;
+        self.device
+            .destroy_fence(fence, None);
+
+        Ok(())
+    }
+
     unsafe fn transfer_data_to_new_texture(
         &self,
         transfer_queue: &Queue,
         width: u32,
         height: u32,
         image_dst: &vk::Image,
+        aspect: vk::ImageAspectFlags,
+        expected_layout: vk::ImageLayout,
         allocation: &MemoryAllocation,
         layer_data: &[Vec<u8>]
     ) -> Result<(), VkError> {
@@ -29,10 +100,10 @@ impl ManagesMemoryTransfers for MemoryAllocator {
 
         if self.staging_buffer_parameters.is_some() {
             self.transfer_data_to_new_texture_with_staging_buffer(
-                transfer_queue, width, height, image_dst, layer_data)
+                transfer_queue, width, height, image_dst, aspect, expected_layout, layer_data)
         } else {
             self.transfer_data_to_new_texture_without_staging_buffer(
-                transfer_queue, image_dst, allocation, layer_data)
+                transfer_queue, image_dst, aspect, expected_layout, allocation, layer_data)
         }
     }
 
@@ -40,6 +111,8 @@ impl ManagesMemoryTransfers for MemoryAllocator {
         &self,
         transfer_queue: &Queue,
         image_dst: &vk::Image,
+        aspect: vk::ImageAspectFlags,
+        expected_layout: vk::ImageLayout,
         allocation: &MemoryAllocation,
         layer_data: &[Vec<u8>]
     ) -> Result<(), VkError> {
@@ -70,11 +143,11 @@ impl ManagesMemoryTransfers for MemoryAllocator {
             .src_access_mask(vk::AccessFlags::empty())
             .dst_access_mask(vk::AccessFlags::MEMORY_READ)
             .old_layout(vk::ImageLayout::PREINITIALIZED)
-            .new_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+            .new_layout(expected_layout)
             .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
             .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
             .subresource_range(vk::ImageSubresourceRange {
-                aspect_mask: vk::ImageAspectFlags::COLOR,
+                aspect_mask: aspect,
                 base_mip_level: 0,
                 level_count: 1,
                 base_array_layer: 0,
@@ -122,6 +195,8 @@ impl ManagesMemoryTransfers for MemoryAllocator {
         width: u32,
         height: u32,
         image_dst: &vk::Image,
+        aspect: vk::ImageAspectFlags,
+        expected_layout: vk::ImageLayout,
         layer_data: &[Vec<u8>]
     ) -> Result<(), VkError> {
 
@@ -161,7 +236,7 @@ impl ManagesMemoryTransfers for MemoryAllocator {
             .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
             .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
             .subresource_range(vk::ImageSubresourceRange {
-                aspect_mask: vk::ImageAspectFlags::COLOR,
+                aspect_mask: aspect,
                 base_mip_level: 0,
                 level_count: 1,
                 base_array_layer: 0,
@@ -180,7 +255,7 @@ impl ManagesMemoryTransfers for MemoryAllocator {
 
         // Copy command
         let image_subresource = vk::ImageSubresourceLayers {
-            aspect_mask: vk::ImageAspectFlags::COLOR,
+            aspect_mask: aspect,
             mip_level: 0,
             base_array_layer: 0,
             layer_count: layer_count as u32
@@ -207,11 +282,11 @@ impl ManagesMemoryTransfers for MemoryAllocator {
             .src_access_mask(vk::AccessFlags::TRANSFER_WRITE)
             .dst_access_mask(vk::AccessFlags::MEMORY_READ)
             .old_layout(vk::ImageLayout::TRANSFER_DST_OPTIMAL)
-            .new_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+            .new_layout(expected_layout)
             .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
             .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
             .subresource_range(vk::ImageSubresourceRange {
-                aspect_mask: vk::ImageAspectFlags::COLOR,
+                aspect_mask: aspect,
                 base_mip_level: 0,
                 level_count: 1,
                 base_array_layer: 0,

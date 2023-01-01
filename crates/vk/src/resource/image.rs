@@ -2,7 +2,7 @@
 use crate::{
     VkError,
     context::VkContext,
-    mem::{MemoryAllocator, MemoryAllocation, ManagesImageMemory, ManagesMemoryTransfers}
+    mem::{MemoryAllocator, MemoryAllocation, ManagesImageMemory}
 };
 use resource::{ImageUsage, TexturePixelFormat};
 use ash::{
@@ -17,8 +17,10 @@ struct ImageCreationParams {
     usage: vk::ImageUsageFlags,
     aspect: vk::ImageAspectFlags,
     view_type: vk::ImageViewType,
+    initialising_layout: vk::ImageLayout,
+    expected_layout: vk::ImageLayout,
     layer_count: u32,
-    pre_initialised: bool
+    host_visible: bool
 }
 
 /// ImageWrapper struct
@@ -65,8 +67,10 @@ impl ImageWrapper {
                     usage: vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
                     aspect: vk::ImageAspectFlags::DEPTH,
                     view_type: vk::ImageViewType::TYPE_2D,
+                    initialising_layout: vk::ImageLayout::UNDEFINED,
+                    expected_layout: vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                     layer_count: 1,
-                    pre_initialised: false
+                    host_visible: false
                 }
             },
 
@@ -81,8 +85,10 @@ impl ImageWrapper {
                     usage: vk::ImageUsageFlags::SAMPLED | vk::ImageUsageFlags::COLOR_ATTACHMENT,
                     aspect: vk::ImageAspectFlags::COLOR,
                     view_type: vk::ImageViewType::TYPE_2D,
+                    initialising_layout: vk::ImageLayout::UNDEFINED,
+                    expected_layout: vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
                     layer_count: 1,
-                    pre_initialised: false
+                    host_visible: false
                 }
             },
 
@@ -97,8 +103,10 @@ impl ImageWrapper {
                     usage: vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT,
                     aspect: vk::ImageAspectFlags::DEPTH,
                     view_type: vk::ImageViewType::TYPE_2D,
+                    initialising_layout: vk::ImageLayout::UNDEFINED,
+                    expected_layout: vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
                     layer_count: 1,
-                    pre_initialised: false
+                    host_visible: false
                 }
             },
 
@@ -113,8 +121,10 @@ impl ImageWrapper {
                     usage: vk::ImageUsageFlags::TRANSFER_DST | vk::ImageUsageFlags::SAMPLED,
                     aspect: vk::ImageAspectFlags::COLOR,
                     view_type: vk::ImageViewType::TYPE_2D,
+                    initialising_layout: vk::ImageLayout::PREINITIALIZED,
+                    expected_layout: vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
                     layer_count: 1,
-                    pre_initialised: true
+                    host_visible: false
                 }
             },
 
@@ -122,15 +132,17 @@ impl ImageWrapper {
             (ImageUsage::Skybox, TexturePixelFormat::Rgba) => {
                 if init_layer_data.is_none() {
                     return Err(VkError::OpFailed(
-                        String::from("Not initialising sample-only texture not allowed")));
+                        String::from("Not initialising cube map texture not allowed")));
                 }
                 ImageCreationParams {
                     format: vk::Format::R8G8B8A8_UNORM,
                     usage: vk::ImageUsageFlags::TRANSFER_DST | vk::ImageUsageFlags::SAMPLED,
                     aspect: vk::ImageAspectFlags::COLOR,
                     view_type: vk::ImageViewType::CUBE,
+                    initialising_layout: vk::ImageLayout::PREINITIALIZED,
+                    expected_layout: vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
                     layer_count: 6,
-                    pre_initialised: true
+                    host_visible: false
                 }
             },
 
@@ -141,21 +153,32 @@ impl ImageWrapper {
             }
         };
 
-        let (allocation, image, image_view) = Self::make_image_and_view(
+        let image = Self::make_image(
             context,
             width,
             height,
             &creation_params)?;
 
-        if let Some(layer_data) = init_layer_data {
-            Self::initialise_read_only_color_texture(
-                context,
+        let (allocator, transfer_queue) = context.get_mem_allocator();
+        let allocation = allocator
+            .back_image_memory(
+                transfer_queue,
+                &image,
+                creation_params.aspect,
                 width,
                 height,
-                &image,
-                &allocation,
-                layer_data)?;
-        }
+                init_layer_data,
+                creation_params.initialising_layout,
+                creation_params.expected_layout
+            )
+            .map_err(|e| {
+                VkError::OpFailed(format! ("Allocation error: {:?}", e))
+            })?;
+
+        let image_view = Self::make_image_view(
+            context,
+            image,
+            &creation_params)?;
 
         Ok(ImageWrapper {
             allocation,
@@ -165,27 +188,18 @@ impl ImageWrapper {
         })
     }
 
-    /// Create the image and image view
-    unsafe fn make_image_and_view(
+    /// Create the image
+    unsafe fn make_image(
         context: &VkContext,
         width: u32,
         height: u32,
         creation_params: &ImageCreationParams
-    ) -> Result<(MemoryAllocation, vk::Image, vk::ImageView), VkError> {
-        let queue_families = [
-            context.graphics_queue.queue_family_index
-        ];
+    ) -> Result<vk::Image, VkError> {
         let extent3d = vk::Extent3D { width, height, depth: 1 };
         let flags = match creation_params.view_type {
             vk::ImageViewType::CUBE => vk::ImageCreateFlags::CUBE_COMPATIBLE,
             _ => vk::ImageCreateFlags::empty()
         };
-
-        let initial_layout: vk::ImageLayout = match creation_params.pre_initialised {
-            true => vk::ImageLayout::PREINITIALIZED,
-            false => vk::ImageLayout::UNDEFINED
-        };
-
         let image_info = vk::ImageCreateInfo::builder()
             .image_type(vk::ImageType::TYPE_2D)
             .flags(flags)
@@ -197,21 +211,22 @@ impl ImageWrapper {
             .tiling(vk::ImageTiling::OPTIMAL)
             .usage(creation_params.usage)
             .sharing_mode(vk::SharingMode::EXCLUSIVE)
-            .queue_family_indices(&queue_families)
-            .initial_layout(initial_layout)
+            .initial_layout(creation_params.initialising_layout)
             .build();
-        let (allocator, _) = context.get_mem_allocator();
-        let (image, allocation) = allocator
-            .create_image(&image_info, creation_params.pre_initialised)
+        let image = context.device.create_image(&image_info, None)
             .map_err(|e| {
-                VkError::OpFailed(format! ("Allocation error: {:?}", e))
+                VkError::OpFailed(format!("Error creating image: {:?}", e))
             })?;
 
-        context.device.bind_image_memory(image, allocation.get_memory(), 0)
-            .map_err(|e| {
-                VkError::OpFailed(format! ("Error binding memory to image: {:?}", e))
-            })?;
+        Ok(image)
+    }
 
+    /// Create the image view
+    unsafe fn make_image_view(
+        context: &VkContext,
+        image: vk::Image,
+        creation_params: &ImageCreationParams
+    ) -> Result<vk::ImageView, VkError> {
         let subresource_range = vk::ImageSubresourceRange::builder()
             .aspect_mask(creation_params.aspect)
             .base_mip_level(0)
@@ -229,7 +244,7 @@ impl ImageWrapper {
                 VkError::OpFailed(format!("{:?}", e))
             })?;
 
-        Ok((allocation, image, image_view))
+        Ok(image_view)
     }
 
     /// Destroy all resources held by the instance
@@ -240,24 +255,5 @@ impl ImageWrapper {
     ) -> Result<(), VkError> {
         device.destroy_image_view(self.image_view, None);
         allocator.destroy_image(self.image, &self.allocation)
-    }
-
-    /// Initialise the image's memory with texture data; may use a staging buffer to allocate
-    /// device-local memory and transitions the image into the optimal layout for reading in
-    /// samplers in shaders
-    unsafe fn initialise_read_only_color_texture(
-        context: &VkContext,
-        width: u32,
-        height: u32,
-        image: &vk::Image,
-        allocation: &MemoryAllocation,
-        layer_data: &[Vec<u8>]) -> Result<(), VkError> {
-        if layer_data.is_empty() {
-            panic!("Passed empty layer data as ImageWrapper init data")
-        }
-        let (allocator, transfer_queue) = context.get_mem_allocator();
-        allocator.transfer_data_to_new_texture(
-            transfer_queue, width, height, image, allocation, layer_data)?;
-        Ok(())
     }
 }
