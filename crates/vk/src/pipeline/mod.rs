@@ -2,7 +2,7 @@ pub mod renderpass;
 pub mod offscreen_framebuffer;
 
 use crate::{VkContext, VkError, BufferWrapper, RenderpassWrapper};
-use resource::ResourceManager;
+use resource::{ResourceManager, BufferUsage};
 use ash::vk;
 use std::ffi::CString;
 
@@ -145,17 +145,12 @@ impl PipelineWrapper {
 
         // Create uniform buffer
         let uniform_buffer = {
-            let uniform_buffer_data: Vec<f32> = vec![0.0; ubo_size_bytes];
-            let (allocator, _) = context.get_mem_allocator();
-            let mut buffer = BufferWrapper::new(
-                allocator,
+            let uniform_buffer_data: Vec<u8> = vec![0; ubo_size_bytes];
+            let buffer = BufferWrapper::new(
+                context,
+                BufferUsage::UniformBuffer,
                 ubo_size_bytes,
-                vk::BufferUsageFlags::UNIFORM_BUFFER)?;
-            buffer.update::<f32>(
-                allocator,
-                0,
-                uniform_buffer_data.as_ptr(),
-                uniform_buffer_data.len())?;
+                Some(&uniform_buffer_data))?;
             buffer
         };
 

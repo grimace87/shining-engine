@@ -1,7 +1,15 @@
 
-use crate::VkError;
+use crate::{VkError, VkContext};
 use crate::mem::{MemoryAllocator, MemoryAllocation, ManagesBufferMemory};
+use resource::BufferUsage;
 use ash::vk;
+
+/// BufferCreationParams struct
+/// Description for creating an buffer; should cover all use cases needed by the engine
+struct BufferCreationParams {
+    usage_flags: vk::BufferUsageFlags,
+    host_accessible: bool
+}
 
 /// BufferWrapper struct
 /// Wraps up a Vulkan Buffer and its memory allocation that backs it
@@ -13,17 +21,44 @@ pub struct BufferWrapper {
 impl BufferWrapper {
 
     /// Create a new buffer and back it with memory
-    pub unsafe fn new(
-        allocator: &MemoryAllocator,
+    pub unsafe fn new<T: Sized>(
+        context: &VkContext,
+        buffer_usage: BufferUsage,
         size_bytes: usize,
-        buffer_usage: vk::BufferUsageFlags
+        init_data: Option<&[T]>
     ) -> Result<BufferWrapper, VkError> {
+
+        let transfer_usage = match init_data.is_some() {
+            true => vk::BufferUsageFlags::TRANSFER_DST,
+            false => vk::BufferUsageFlags::empty()
+        };
+
+        let creation_params = match buffer_usage {
+            BufferUsage::InitialiseOnceVertexBuffer => BufferCreationParams {
+                usage_flags: vk::BufferUsageFlags::VERTEX_BUFFER | transfer_usage,
+                host_accessible: false
+            },
+            BufferUsage::UniformBuffer => BufferCreationParams {
+                usage_flags: vk::BufferUsageFlags::UNIFORM_BUFFER | transfer_usage,
+                host_accessible: true
+            }
+        };
+
         let buffer_create_info = vk::BufferCreateInfo::builder()
             .size(size_bytes as u64)
-            .usage(buffer_usage)
+            .usage(creation_params.usage_flags)
             .build();
-        let (buffer, allocation) = allocator
-            .create_buffer(&buffer_create_info)?;
+        let buffer = context.device.create_buffer(&buffer_create_info, None)
+            .map_err(|e| {
+                VkError::OpFailed(format!("Error creating buffer: {:?}", e))
+            })?;
+
+        let (allocator, transfer_queue) = context.get_mem_allocator();
+        let allocation = allocator.back_buffer_memory(
+            transfer_queue,
+            &buffer,
+            creation_params.host_accessible,
+            init_data)?;
 
         Ok(BufferWrapper {
             buffer,

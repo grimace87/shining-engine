@@ -6,7 +6,7 @@ use crate::BufferWrapper;
 use crate::ImageWrapper;
 use crate::VkError;
 use model::StaticVertex;
-use resource::{ResourceLoader, VboCreationData, TextureCreationData};
+use resource::{ResourceLoader, BufferUsage, VboCreationData, TextureCreationData};
 use ash::vk;
 
 impl ResourceLoader for crate::VkContext {
@@ -17,17 +17,11 @@ impl ResourceLoader for crate::VkContext {
 
     fn load_model(&self, raw_data: &VboCreationData) -> Result<(BufferWrapper, usize), VkError> {
         let buffer = unsafe {
-            let (allocator, _) = self.get_mem_allocator();
-            let mut buffer = BufferWrapper::new(
-                allocator,
+            BufferWrapper::new::<StaticVertex>(
+                self,
+                BufferUsage::InitialiseOnceVertexBuffer,
                 raw_data.vertex_count * std::mem::size_of::<StaticVertex>(), // TODO - different vertex types?
-                vk::BufferUsageFlags::VERTEX_BUFFER)?; // TODO - staging buffer?
-            buffer.update::<StaticVertex>(
-                allocator,
-                0,
-                raw_data.vertex_data.as_ptr(),
-                raw_data.vertex_data.len())?;
-            buffer
+                Some(&raw_data.vertex_data))?
         };
         Ok((buffer, raw_data.vertex_count))
     }

@@ -5,6 +5,24 @@ pub use manager::ResourceManager;
 use model::StaticVertex;
 use std::collections::HashMap;
 
+/// ImageUsage enum
+/// An enumeration of what purpose buffer resources can be used for
+#[derive(PartialEq, Debug)]
+pub enum BufferUsage {
+    InitialiseOnceVertexBuffer,
+    UniformBuffer
+}
+
+/// VboCreationData struct
+/// Specification for how a vertex buffer is to be created
+pub struct VboCreationData {
+    pub vertex_data: Vec<StaticVertex>,
+    pub vertex_count: usize,
+    pub draw_indexed: bool,
+    pub index_data: Option<Vec<u16>>,
+    pub usage: BufferUsage
+}
+
 /// TexturePixelFormat enum
 /// Abstraction of the set of pixel formats known by the engine
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
@@ -22,15 +40,6 @@ pub enum ImageUsage {
     DepthBuffer,
     OffscreenRenderSampleColorWriteDepth,
     Skybox
-}
-
-/// VboCreationData struct
-/// Specification for how a vertex buffer is to be created
-pub struct VboCreationData {
-    pub vertex_data: Vec<StaticVertex>,
-    pub vertex_count: usize,
-    pub draw_indexed: bool,
-    pub index_data: Option<Vec<u16>>
 }
 
 /// TextureCreationData struct

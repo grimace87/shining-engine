@@ -1,27 +1,28 @@
 
-use crate::mem::{
-    MemoryAllocator, ManagesBufferMemory, MemoryAllocation
-};
-use crate::VkError;
+use crate::mem::{MemoryAllocator, ManagesBufferMemory, MemoryAllocation, ManagesMemoryTransfers};
+use crate::{VkError, Queue};
 
 use ash::vk;
 
 impl ManagesBufferMemory for MemoryAllocator {
 
-    unsafe fn create_buffer(
+    /// Prepares the buffer and its memory ready for its intended usage.
+    /// After this function returns, the buffer will be backed by memory, and that memory will be
+    /// initialised with data if some was provided. If requested, the memory will be host-visible.
+    unsafe fn back_buffer_memory<T: Sized>(
         &self,
-        buffer_info: &vk::BufferCreateInfo
-    ) -> Result<(vk::Buffer, MemoryAllocation), VkError> {
-        let buffer = self.device.create_buffer(&buffer_info, None)
-            .map_err(|e| {
-                VkError::OpFailed(format!("Error creating buffer: {:?}", e))
-            })?;
+        transfer_queue: &Queue,
+        buffer: &vk::Buffer,
+        host_accessible: bool,
+        init_data: Option<&[T]>
+    ) -> Result<MemoryAllocation, VkError> {
 
-        // TODO - Use staging buffer properly
-        let memory_type = self.allocation_parameters
-            .memory_type_staging_buffer
-            .unwrap_or_else(|| self.allocation_parameters.memory_type_bulk_performance);
-        let requirements = self.device.get_buffer_memory_requirements(buffer);
+        // Allocate the final memory to be used for backing the buffer
+        let requirements = self.device.get_buffer_memory_requirements(*buffer);
+        let memory_type = match host_accessible {
+            true => self.allocation_parameters.memory_type_host_visible,
+            false => self.allocation_parameters.memory_type_bulk_performance
+        };
         let allocate_info = vk::MemoryAllocateInfo::builder()
             .allocation_size(requirements.size)
             .memory_type_index(memory_type);
@@ -33,7 +34,24 @@ impl ManagesBufferMemory for MemoryAllocator {
             memory,
             size: requirements.size
         };
-        Ok((buffer, allocation))
+
+        // Bind the buffer's memory
+        self.device.bind_buffer_memory(*buffer, memory, 0)
+            .map_err(|e| {
+                VkError::OpFailed(format! ("Error binding memory to image: {:?}", e))
+            })?;
+
+        // If memory needs to be initialised with data, do it via a separate function that handles
+        // the staging buffer (or doesn't use it if it's not applicable on this device).
+        if let Some(data) = init_data {
+            self.transfer_data_to_new_buffer(
+                transfer_queue,
+                buffer,
+                &allocation,
+                data)?;
+        }
+
+        Ok(allocation)
     }
 
     unsafe fn destroy_buffer(

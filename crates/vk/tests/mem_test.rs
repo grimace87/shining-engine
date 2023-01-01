@@ -15,7 +15,8 @@ use std::fmt::Debug;
 
 use model::{COLLADA, Config};
 use resource::{
-    ResourceManager, ImageUsage, VboCreationData, TextureCreationData, RawResourceBearer
+    ResourceManager, BufferUsage, ImageUsage, VboCreationData, TextureCreationData,
+    RawResourceBearer
 };
 
 const VBO_INDEX_SCENE: u32 = 0;
@@ -52,7 +53,8 @@ impl RawResourceBearer for ResourceSource {
             vertex_data: scene_model.vertices,
             vertex_count: scene_vertex_count,
             draw_indexed: false,
-            index_data: None
+            index_data: None,
+            usage: BufferUsage::InitialiseOnceVertexBuffer
         }
     }
 

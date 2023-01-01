@@ -160,20 +160,15 @@ impl ImageWrapper {
             &creation_params)?;
 
         let (allocator, transfer_queue) = context.get_mem_allocator();
-        let allocation = allocator
-            .back_image_memory(
-                transfer_queue,
-                &image,
-                creation_params.aspect,
-                width,
-                height,
-                init_layer_data,
-                creation_params.initialising_layout,
-                creation_params.expected_layout
-            )
-            .map_err(|e| {
-                VkError::OpFailed(format! ("Allocation error: {:?}", e))
-            })?;
+        let allocation = allocator.back_image_memory(
+            transfer_queue,
+            &image,
+            creation_params.aspect,
+            width,
+            height,
+            init_layer_data,
+            creation_params.initialising_layout,
+            creation_params.expected_layout)?;
 
         let image_view = Self::make_image_view(
             context,

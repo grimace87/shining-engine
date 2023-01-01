@@ -12,10 +12,13 @@ const INITIAL_STAGING_BUFFER_SIZE: vk::DeviceSize = 134_217_728;
 /// Trait indicating that this type can create buffers and back them with memory
 pub trait ManagesBufferMemory {
 
-    unsafe fn create_buffer(
+    unsafe fn back_buffer_memory<T: Sized>(
         &self,
-        buffer_info: &vk::BufferCreateInfo
-    ) -> Result<(vk::Buffer, MemoryAllocation), VkError>;
+        transfer_queue: &Queue,
+        buffer: &vk::Buffer,
+        host_accessible: bool,
+        init_data: Option<&[T]>
+    ) -> Result<MemoryAllocation, VkError>;
 
     unsafe fn destroy_buffer(
         &self,
@@ -49,6 +52,27 @@ pub trait ManagesImageMemory {
 /// Trait indicating that this type can perform smart initialisation of image memory, handling
 /// staging buffers and layout transitions as needed to produce ready-to-go textures
 pub trait ManagesMemoryTransfers {
+
+    unsafe fn transfer_data_to_new_buffer<T: Sized>(
+        &self,
+        transfer_queue: &Queue,
+        buffer: &vk::Buffer,
+        allocation: &MemoryAllocation,
+        init_data: &[T]
+    ) -> Result<(), VkError>;
+
+    unsafe fn transfer_data_to_new_buffer_without_staging_buffer<T: Sized>(
+        &self,
+        allocation: &MemoryAllocation,
+        init_data: &[T]
+    ) -> Result<(), VkError>;
+
+    unsafe fn transfer_data_to_new_buffer_with_staging_buffer<T: Sized>(
+        &self,
+        transfer_queue: &Queue,
+        buffer: &vk::Buffer,
+        init_data: &[T]
+    ) -> Result<(), VkError>;
 
     unsafe fn transition_image_layout(
         &self,
@@ -115,7 +139,7 @@ impl MemoryAllocation {
 
 struct MemoryAllocationParameters {
     memory_type_bulk_performance: u32,
-    memory_type_uniform_buffer: u32,
+    memory_type_host_visible: u32,
     memory_type_staging_buffer: Option<u32>,
     prefer_image_tiling: bool
 }
@@ -314,7 +338,7 @@ impl MemoryAllocator {
         };
         Ok(MemoryAllocationParameters {
             memory_type_bulk_performance: performance_type,
-            memory_type_uniform_buffer: uniform_type,
+            memory_type_host_visible: uniform_type,
             memory_type_staging_buffer: chosen_type_staging_buffer,
             prefer_image_tiling
         })
