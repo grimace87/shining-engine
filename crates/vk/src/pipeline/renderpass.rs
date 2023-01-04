@@ -147,8 +147,7 @@ impl RenderpassWrapper {
         let framebuffer = self.create_swapchain_framebuffer(
             context,
             image_index,
-            renderpass,
-            depth_image)?;
+            renderpass)?;
 
         self.renderpass = renderpass;
         self.swapchain_framebuffer = framebuffer;
@@ -287,12 +286,13 @@ impl RenderpassWrapper {
         &self,
         context: &VkContext,
         image_index: usize,
-        renderpass: vk::RenderPass,
-        depth_image: &ImageWrapper
+        renderpass: vk::RenderPass
     ) -> Result<vk::Framebuffer, VkError> {
         let extent = context.get_extent()?;
+        let image_view = context.get_image_view(image_index)?;
+        let depth_image = context.get_depth_image().unwrap();
         let attachments_array = [
-            context.image_views[image_index],
+            image_view,
             depth_image.image_view
         ];
         let framebuffer_info = vk::FramebufferCreateInfo::builder()

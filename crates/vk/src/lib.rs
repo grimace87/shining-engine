@@ -21,7 +21,8 @@ pub use pipeline::{
 pub enum VkError {
     OpFailed(String),
     MissingResource(String),
-    Compatibility(String)
+    Compatibility(String),
+    EngineError(String)
 }
 
 pub mod util {

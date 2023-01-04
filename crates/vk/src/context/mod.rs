@@ -20,6 +20,7 @@ use resource::{ImageUsage, TexturePixelFormat};
 use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
 
 pub use queues::Queue;
+pub use swapchain::SwapchainWrapper;
 
 /// Wrap logical device along with Vulkan components that can exist for the life of a window
 pub struct VkContext {
@@ -35,9 +36,7 @@ pub struct VkContext {
     surface_fn: Surface,
     surface: vk::SurfaceKHR,
     swapchain_fn: Swapchain,
-    swapchain: vk::SwapchainKHR,
-    pub image_views: Vec<vk::ImageView>,
-    depth_image: Option<ImageWrapper>,
+    swapchain: SwapchainWrapper,
 }
 
 impl VkContext {
@@ -106,9 +105,7 @@ impl VkContext {
                 surface_fn,
                 surface,
                 swapchain_fn,
-                swapchain: vk::SwapchainKHR::null(),
-                image_views: vec![],
-                depth_image: None
+                swapchain: SwapchainWrapper::default()
             }
         )
     }
@@ -127,12 +124,14 @@ impl VkContext {
         Ok(surface_capabilities.current_extent)
     }
 
+    /// Getter for a swapchain image view
+    pub fn get_image_view(&self, image_index: usize) -> Result<vk::ImageView, VkError> {
+        self.swapchain.get_image_view(image_index)
+    }
+
     /// Getter for the depth image
     pub fn get_depth_image(&self) -> Option<&ImageWrapper> {
-        match &self.depth_image {
-            Some(image) => Some(image),
-            _ => None
-        }
+        self.swapchain.get_depth_image()
     }
 
     /// Query supported surface formats for the currently selected physical device and the
@@ -150,36 +149,15 @@ impl VkContext {
     /// Create the swapchain; any previously-created swapchain should be destroyed first
     unsafe fn create_swapchain(&mut self, core: &VkCore) -> Result<(), VkError> {
 
-        self.swapchain = swapchain::create_swapchain(
-            core,
-            &self.surface_fn,
-            self.surface,
-            &self.swapchain_fn,
-            vk::SwapchainKHR::null())?;
-        let mut swapchain_image_views =
-            swapchain::create_swapchain_image_views(
-                &self.device,
-                &self.swapchain_fn,
-                self.swapchain)?;
-        self.image_views.clear();
-        self.image_views.append(&mut swapchain_image_views);
-        self.current_image_acquired = self.image_views.len() - 1;
-
         let extent = self.get_extent()?;
-        let depth_image = ImageWrapper::new(
-            &self,
-            ImageUsage::DepthBuffer,
-            TexturePixelFormat::Unorm16,
-            extent.width as u32,
-            extent.height as u32,
-            None)?;
-        self.depth_image = Some(depth_image);
+        self.swapchain = SwapchainWrapper::new(core, &self, &self.surface_fn, self.surface, extent)?;
+        self.current_image_acquired = self.swapchain.get_image_count() - 1;
 
         // Synchronisation objects
         self.sync_image_available.clear();
         self.sync_may_begin_rendering.clear();
         self.sync_rendering_finished.clear();
-        let swapchain_size = self.image_views.len();
+        let swapchain_size = self.swapchain.get_image_count();
         let semaphore_create_info = vk::SemaphoreCreateInfo::builder();
         let fence_create_info = vk::FenceCreateInfo::builder()
             .flags(vk::FenceCreateFlags::SIGNALED);
@@ -218,13 +196,7 @@ impl VkContext {
         for semaphore in self.sync_image_available.iter() {
             self.device.destroy_semaphore(*semaphore, None);
         }
-        if let Some(image) = &self.depth_image {
-            image.destroy(&self.device, &self.mem_allocator).unwrap();
-        }
-        for image_view in self.image_views.iter_mut() {
-            self.device.destroy_image_view(*image_view, None);
-        }
-        self.swapchain_fn.destroy_swapchain(self.swapchain, None);
+        self.swapchain.destroy(&self, &self.swapchain_fn);
     }
 
     /// Getter for the memory allocator
