@@ -12,7 +12,7 @@ pub use crate::resource::util::TextureCodec;
 pub use crate::resource::buffer::BufferWrapper;
 pub use crate::resource::image::ImageWrapper;
 pub use pipeline::{
-    PipelineWrapper,
+    wrapper::PipelineWrapper,
     renderpass::RenderpassWrapper,
     offscreen_framebuffer::OffscreenFramebufferWrapper
 };
