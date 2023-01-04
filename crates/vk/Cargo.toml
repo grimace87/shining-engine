@@ -8,7 +8,7 @@ ash = { workspace = true }
 ash-window = { workspace = true }
 raw-window-handle = { workspace = true }
 vk-shader-macros = "0.2.8"
-image = { version = "0.23.14", default-features = false, features = ["jpeg", "png"] }
+image = { version = "0.24.4", default-features = false, features = ["jpeg", "png"] }
 model = { path = "../model" }
 resource = { path = "../resource" }
 
