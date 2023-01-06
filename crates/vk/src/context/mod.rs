@@ -16,7 +16,6 @@ use ash::{
     },
     vk
 };
-use resource::{ImageUsage, TexturePixelFormat};
 use raw_window_handle::{HasRawDisplayHandle, HasRawWindowHandle};
 
 pub use queues::Queue;
@@ -124,8 +123,13 @@ impl VkContext {
         Ok(surface_capabilities.current_extent)
     }
 
+    /// Getter for swapchain image count
+    pub fn get_swapchain_image_count(&self) -> usize {
+        self.swapchain.get_image_count()
+    }
+
     /// Getter for a swapchain image view
-    pub fn get_image_view(&self, image_index: usize) -> Result<vk::ImageView, VkError> {
+    pub fn get_swapchain_image_view(&self, image_index: usize) -> Result<vk::ImageView, VkError> {
         self.swapchain.get_image_view(image_index)
     }
 

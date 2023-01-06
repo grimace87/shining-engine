@@ -454,6 +454,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "engine"
+version = "0.1.0"
+dependencies = [
+ "ash",
+ "model",
+ "resource",
+ "vk",
+ "vk-shader-macros",
+ "window",
+]
+
+[[package]]
 name = "expat-sys"
 version = "2.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"

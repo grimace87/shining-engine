@@ -1,0 +1,12 @@
+[package]
+name = "engine"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ash = { workspace = true }
+vk-shader-macros = { workspace = true }
+model = { path = "../model" }
+resource = { path = "../resource" }
+vk = { path = "../vk" }
+window = { path = "../window" }

@@ -1,5 +1,5 @@
 
-use crate::{VkContext, VkError, ImageWrapper, OffscreenFramebufferWrapper};
+use crate::{VkContext, VkError, OffscreenFramebufferWrapper};
 use resource::TexturePixelFormat;
 use ash::vk;
 
@@ -228,7 +228,7 @@ impl RenderpassWrapper {
             layout: vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL
         };
         let subpasses = {
-            let mut subpass_description = vk::SubpassDescription::builder()
+            let subpass_description = vk::SubpassDescription::builder()
                 .color_attachments(&color_attachment_refs)
                 .pipeline_bind_point(vk::PipelineBindPoint::GRAPHICS);
             if target.depth_texture.is_some() {
@@ -289,7 +289,7 @@ impl RenderpassWrapper {
         renderpass: vk::RenderPass
     ) -> Result<vk::Framebuffer, VkError> {
         let extent = context.get_extent()?;
-        let image_view = context.get_image_view(image_index)?;
+        let image_view = context.get_swapchain_image_view(image_index)?;
         let depth_image = context.get_depth_image().unwrap();
         let attachments_array = [
             image_view,
