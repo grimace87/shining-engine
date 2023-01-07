@@ -1,6 +1,6 @@
 
 use model::StaticVertex;
-use vk::{
+use vk_renderer::{
     VkError, VkCore, VkContext, RenderpassWrapper, PipelineWrapper
 };
 use window::{RenderEventHandler, WindowEventHandler, Window};

@@ -6,7 +6,7 @@
 /// The test creates a window, creates a VkCore and a VkContext, and then creates a some pipeline
 /// objects. Then it tears everything down.
 
-use vk::{
+use vk_renderer::{
     VkCore, VkContext, OffscreenFramebufferWrapper, RenderpassWrapper, PipelineWrapper,
     TextureCodec, util::decode_texture
 };

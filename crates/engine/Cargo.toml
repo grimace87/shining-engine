@@ -8,7 +8,7 @@ ash = { workspace = true }
 vk-shader-macros = { workspace = true }
 model = { path = "../model" }
 resource = { path = "../resource" }
-vk = { path = "../vk_renderer" }
+vk_renderer = { path = "../vk_renderer" }
 window = { path = "../window" }
 
 [[test]]

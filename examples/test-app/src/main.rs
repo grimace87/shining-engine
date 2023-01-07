@@ -4,7 +4,7 @@ use window::{
     WindowEventHandler, WindowStateEvent, Window, MessageProxy, WindowCommand,
     KeyCode, KeyState
 };
-use vk::{VkCore, VkContext};
+use vk_renderer::{VkCore, VkContext};
 use std::fmt::Debug;
 
 #[derive(PartialEq, Debug)]

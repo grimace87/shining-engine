@@ -6,7 +6,7 @@
 /// This test creates a more-or-less functioning graphics application.
 
 use engine::Engine;
-use vk::{TextureCodec, util::decode_texture};
+use vk_renderer::{TextureCodec, util::decode_texture};
 use window::{
     RenderCycleEvent, RenderEventHandler, WindowEventHandler, WindowStateEvent, Window,
     MessageProxy, WindowCommand

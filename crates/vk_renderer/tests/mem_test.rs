@@ -6,7 +6,7 @@
 /// The test creates a window, creates a VkCore and a VkContext, and then creates a bunch of memory
 /// objects. Then it tears everything down.
 
-use vk::{VkCore, VkContext, TextureCodec, util::decode_texture};
+use vk_renderer::{VkCore, VkContext, TextureCodec, util::decode_texture};
 use window::{
     RenderCycleEvent, RenderEventHandler,
     WindowEventHandler, WindowStateEvent, Window, MessageProxy, WindowCommand

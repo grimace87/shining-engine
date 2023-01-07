@@ -5,7 +5,7 @@
 ///
 /// The test creates a window, then creates and destroys a VkCore and VkContext.
 
-use vk::{VkCore, VkContext};
+use vk_renderer::{VkCore, VkContext};
 use window::{
     RenderCycleEvent, RenderEventHandler,
     WindowEventHandler, WindowStateEvent, Window, MessageProxy, WindowCommand
