@@ -222,7 +222,7 @@ impl PipelineWrapper {
             offset: 0,
             range: ubo_size_bytes as u64
         }];
-        // TODO - (0..texture_image_views.len()).map(|index| vk::DescriptorImageInfo with texture_image_views[index]).collect()
+        // TODO - (0..texture_image_views.len()).map(|index| vk_renderer::DescriptorImageInfo with texture_image_views[index]).collect()
         let image_infos = [vk::DescriptorImageInfo {
             image_view: texture_image_view,
             sampler: sampler,

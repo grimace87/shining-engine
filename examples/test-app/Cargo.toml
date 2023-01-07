@@ -5,4 +5,4 @@ edition = "2021"
 
 [dependencies]
 window = { path = "../../crates/window" }
-vk = { path = "../../crates/vk" }
+vk = { path = "../../crates/vk_renderer" }
