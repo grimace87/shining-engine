@@ -52,6 +52,21 @@ pub struct TextureCreationData {
     pub usage: ImageUsage
 }
 
+/// ShaderStage enum
+/// Used to signal what point in the pipeline a shader should be used
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum ShaderStage {
+    Vertex,
+    Fragment
+}
+
+/// ShaderCreationData struct
+/// Information needed to prepare a reusable shader ahead of time
+pub struct ShaderCreationData {
+    pub data: &'static [u32],
+    pub stage: ShaderStage
+}
+
 /// ResourcePreloads struct
 /// Encapsulates everything needed to initialise all of the resources that need to be preloaded in
 /// order to render a scene.
@@ -64,6 +79,7 @@ pub trait ResourceLoader {
 
     type VertexBufferHandle;
     type TextureHandle;
+    type ShaderHandle;
     type LoadError;
 
     fn load_model(&self, raw_data: &VboCreationData) -> Result<(Self::VertexBufferHandle, usize), Self::LoadError>;
@@ -72,6 +88,9 @@ pub trait ResourceLoader {
     fn load_texture(&self, raw_data: &TextureCreationData) -> Result<Self::TextureHandle, Self::LoadError>;
     fn release_texture(&mut self, texture: &Self::TextureHandle) -> Result<(), Self::LoadError>;
 
+    fn load_shader(&self, raw_data: &ShaderCreationData) -> Result<Self::ShaderHandle, Self::LoadError>;
+    fn release_shader(&mut self, shader: &Self::ShaderHandle) -> Result<(), Self::LoadError>;
+
     fn make_error(message: String) -> Self::LoadError;
 }
 
@@ -79,7 +98,9 @@ pub trait RawResourceBearer {
 
     fn get_model_resource_ids(&self) -> &[u32];
     fn get_texture_resource_ids(&self) -> &[u32];
+    fn get_shader_resource_ids(&self) -> &[u32];
 
     fn get_raw_model_data(&self, id: u32) -> VboCreationData;
     fn get_raw_texture_data(&self, id: u32) -> TextureCreationData;
+    fn get_raw_shader_data(&self, id: u32) -> ShaderCreationData;
 }

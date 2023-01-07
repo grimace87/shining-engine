@@ -16,7 +16,7 @@ use std::fmt::Debug;
 use model::{COLLADA, Config};
 use resource::{
     ResourceManager, BufferUsage, ImageUsage, VboCreationData, TextureCreationData,
-    RawResourceBearer
+    RawResourceBearer, ShaderCreationData
 };
 
 const VBO_INDEX_SCENE: u32 = 0;
@@ -37,6 +37,10 @@ impl RawResourceBearer for ResourceSource {
 
     fn get_texture_resource_ids(&self) -> &[u32] {
         &[TEXTURE_INDEX_TERRAIN]
+    }
+
+    fn get_shader_resource_ids(&self) -> &[u32] {
+        &[]
     }
 
     fn get_raw_model_data(&self, id: u32) -> VboCreationData {
@@ -60,13 +64,17 @@ impl RawResourceBearer for ResourceSource {
 
     fn get_raw_texture_data(&self, id: u32) -> TextureCreationData {
         if id != TEXTURE_INDEX_TERRAIN {
-            panic!("Bad model resource ID");
+            panic!("Bad texture resource ID");
         }
         decode_texture(
             TERRAIN_TEXTURE_BYTES,
             TextureCodec::Jpeg,
             ImageUsage::TextureSampleOnly)
             .unwrap()
+    }
+
+    fn get_raw_shader_data(&self, _id: u32) -> ShaderCreationData {
+        panic!("Bad shader resource ID");
     }
 }
 

@@ -13,8 +13,10 @@ use window::{
 };
 use model::{COLLADA, Config};
 use resource::{
-    BufferUsage, ImageUsage, VboCreationData, TextureCreationData, RawResourceBearer
+    BufferUsage, ImageUsage, VboCreationData, TextureCreationData, RawResourceBearer,
+    ShaderCreationData, ShaderStage
 };
+use vk_shader_macros::include_glsl;
 
 const VBO_INDEX_SCENE: u32 = 0;
 const SCENE_MODEL_BYTES: &[u8] =
@@ -23,6 +25,12 @@ const SCENE_MODEL_BYTES: &[u8] =
 const TEXTURE_INDEX_TERRAIN: u32 = 0;
 const TERRAIN_TEXTURE_BYTES: &[u8] =
     include_bytes!("../../../resources/test/textures/simple_outdoor_texture.jpg");
+
+const SHADER_INDEX_VERTEX: u32 = 0;
+const VERTEX_SHADER: &[u32] = include_glsl!("../../resources/test/shaders/simple.vert");
+
+const SHADER_INDEX_FRAGMENT: u32 = 1;
+const FRAGMENT_SHADER: &[u32] = include_glsl!("../../resources/test/shaders/simple.frag");
 
 struct EngineTestApp {
     message_proxy: MessageProxy<WindowCommand<()>>
@@ -36,6 +44,10 @@ impl RawResourceBearer for EngineTestApp {
 
     fn get_texture_resource_ids(&self) -> &[u32] {
         &[TEXTURE_INDEX_TERRAIN]
+    }
+
+    fn get_shader_resource_ids(&self) -> &[u32] {
+        &[SHADER_INDEX_VERTEX, SHADER_INDEX_FRAGMENT]
     }
 
     fn get_raw_model_data(&self, id: u32) -> VboCreationData {
@@ -59,13 +71,27 @@ impl RawResourceBearer for EngineTestApp {
 
     fn get_raw_texture_data(&self, id: u32) -> TextureCreationData {
         if id != TEXTURE_INDEX_TERRAIN {
-            panic!("Bad model resource ID");
+            panic!("Bad texture resource ID");
         }
         decode_texture(
             TERRAIN_TEXTURE_BYTES,
             TextureCodec::Jpeg,
             ImageUsage::TextureSampleOnly)
             .unwrap()
+    }
+
+    fn get_raw_shader_data(&self, id: u32) -> ShaderCreationData {
+        match id {
+            SHADER_INDEX_VERTEX => ShaderCreationData {
+                data: VERTEX_SHADER,
+                stage: ShaderStage::Vertex
+            },
+            SHADER_INDEX_FRAGMENT => ShaderCreationData {
+                data: FRAGMENT_SHADER,
+                stage: ShaderStage::Fragment
+            },
+            _ => panic!("Bad texture resource ID")
+        }
     }
 }
 

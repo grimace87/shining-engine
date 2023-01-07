@@ -8,8 +8,6 @@ use std::ffi::CString;
 /// Resources for a Vulkan pipeline to render a single step within a renderpass within the full
 /// rendering description for a particular scene.
 pub struct PipelineWrapper {
-    vertex_shader_module: vk::ShaderModule,
-    fragment_shader_module: vk::ShaderModule,
     vertex_buffer: vk::Buffer,
     vertex_count: usize,
     uniform_buffer: BufferWrapper,
@@ -27,8 +25,6 @@ impl PipelineWrapper {
     /// Create a new instance with empty fields; requires a separate initialisation call.
     pub fn new() -> PipelineWrapper {
         PipelineWrapper {
-            vertex_shader_module: vk::ShaderModule::null(),
-            fragment_shader_module: vk::ShaderModule::null(),
             vertex_buffer: vk::Buffer::null(),
             vertex_count: 0,
             uniform_buffer: BufferWrapper::empty(),
@@ -52,8 +48,6 @@ impl PipelineWrapper {
             context.device.destroy_descriptor_pool(self.descriptor_pool, None);
             context.device.destroy_descriptor_set_layout(self.descriptor_set_layout, None);
             context.device.destroy_sampler(self.sampler, None);
-            context.device.destroy_shader_module(self.fragment_shader_module, None);
-            context.device.destroy_shader_module(self.vertex_shader_module, None);
         }
     }
 
@@ -63,8 +57,8 @@ impl PipelineWrapper {
         context: &VkContext,
         resource_manager: &ResourceManager<VkContext>,
         renderpass_wrapper: &RenderpassWrapper,
-        vertex_shader_spirv: &[u32],
-        fragment_shader_spirv: &[u32],
+        vertex_shader_index: u32,
+        fragment_shader_index: u32,
         vbo_index: u32,
         vbo_stride_bytes: u32,
         ubo_size_bytes: usize,
@@ -75,25 +69,21 @@ impl PipelineWrapper {
         render_extent: vk::Extent2D
     ) -> Result<(), VkError> {
 
+        // Query shader modeuls
+        let vertex_shader_module = resource_manager
+            .get_shader_handle(vertex_shader_index as u32)?;
+        let fragment_shader_module = resource_manager
+            .get_shader_handle(fragment_shader_index as u32)?;
+
         // Make shader modules
-        let vertex_shader_create_info = vk::ShaderModuleCreateInfo::builder()
-            .code(vertex_shader_spirv);
-        let vertex_shader_module = context.device
-            .create_shader_module(&vertex_shader_create_info, None)
-            .map_err(|e| VkError::OpFailed(format!("{:?}", e)))?;
-        let fragment_shader_create_info = vk::ShaderModuleCreateInfo::builder()
-            .code(fragment_shader_spirv);
-        let fragment_shader_module = context.device
-            .create_shader_module(&fragment_shader_create_info, None)
-            .map_err(|e| VkError::OpFailed(format!("{:?}", e)))?;
         let main_function_name = CString::new("main").unwrap();
         let vertex_shader_stage = vk::PipelineShaderStageCreateInfo::builder()
             .stage(vk::ShaderStageFlags::VERTEX)
-            .module(vertex_shader_module)
+            .module(*vertex_shader_module)
             .name(&main_function_name);
         let fragment_shader_stage = vk::PipelineShaderStageCreateInfo::builder()
             .stage(vk::ShaderStageFlags::FRAGMENT)
-            .module(fragment_shader_module)
+            .module(*fragment_shader_module)
             .name(&main_function_name);
         let shader_stages =
             vec![vertex_shader_stage.build(), fragment_shader_stage.build()];
@@ -320,8 +310,6 @@ impl PipelineWrapper {
                 VkError::OpFailed(format!("{:?}", e))
             )?;
 
-        self.vertex_shader_module = vertex_shader_module;
-        self.fragment_shader_module = fragment_shader_module;
         self.vertex_buffer = vbo_handle;
         self.vertex_count = vbo_vertex_count;
         self.uniform_buffer = uniform_buffer;

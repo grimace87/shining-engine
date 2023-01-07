@@ -44,7 +44,7 @@ impl Engine {
 
         // Create the pipelines
         let mut pipelines = unsafe {
-            Self::create_pipelines(&context, &resource_manager).unwrap()
+            Self::create_pipelines(&context, &resource_manager, &app).unwrap()
         };
 
         window.run(app);
@@ -57,13 +57,15 @@ impl Engine {
         resource_manager.free_resources(&mut context).unwrap();
     }
 
-    unsafe fn create_pipelines(
+    unsafe fn create_pipelines<A: RawResourceBearer>(
         context: &VkContext,
-        resource_manager: &ResourceManager<VkContext>
+        resource_manager: &ResourceManager<VkContext>,
+        app: &A
     ) -> Result<Vec<(RenderpassWrapper, PipelineWrapper)>, VkError> {
 
         let swapchain_size = context.get_swapchain_image_count();
         let mut pipeline_set = Vec::new();
+        let shader_indices = app.get_shader_resource_ids();
         for image_index in 0..swapchain_size {
             let render_extent = context.get_extent()?;
             let renderpass = RenderpassWrapper::new_with_swapchain_target(
@@ -74,8 +76,8 @@ impl Engine {
                 context,
                 resource_manager,
                 &renderpass,
-                VERTEX_SHADER,
-                FRAGMENT_SHADER,
+                shader_indices[0],
+                shader_indices[1],
                 VBO_INDEX_SCENE,
                 std::mem::size_of::<StaticVertex>() as u32,
                 std::mem::size_of::<SomeUniformBuffer>(),

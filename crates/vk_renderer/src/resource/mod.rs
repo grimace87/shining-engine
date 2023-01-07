@@ -6,13 +6,14 @@ use crate::BufferWrapper;
 use crate::ImageWrapper;
 use crate::VkError;
 use model::StaticVertex;
-use resource::{ResourceLoader, BufferUsage, VboCreationData, TextureCreationData};
+use resource::{ResourceLoader, BufferUsage, VboCreationData, TextureCreationData, ShaderCreationData};
 use ash::vk;
 
 impl ResourceLoader for crate::VkContext {
 
     type VertexBufferHandle = BufferWrapper;
     type TextureHandle = ImageWrapper;
+    type ShaderHandle = vk::ShaderModule;
     type LoadError = VkError;
 
     fn load_model(&self, raw_data: &VboCreationData) -> Result<(BufferWrapper, usize), VkError> {
@@ -62,6 +63,23 @@ impl ResourceLoader for crate::VkContext {
             let (allocator, _) = self.get_mem_allocator();
             texture.destroy(&self.device, allocator)
         }
+    }
+
+    fn load_shader(&self, raw_data: &ShaderCreationData) -> Result<Self::ShaderHandle, Self::LoadError> {
+        unsafe {
+            let shader_create_info = vk::ShaderModuleCreateInfo::builder()
+                .code(raw_data.data);
+            self.device
+                .create_shader_module(&shader_create_info, None)
+                .map_err(|e| VkError::OpFailed(format!("{:?}", e)))
+        }
+    }
+
+    fn release_shader(&mut self, shader: &Self::ShaderHandle) -> Result<(), Self::LoadError> {
+        unsafe {
+            self.device.destroy_shader_module(*shader, None);
+        }
+        Ok(())
     }
 
     #[inline]
