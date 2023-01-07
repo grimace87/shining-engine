@@ -10,3 +10,8 @@ model = { path = "../model" }
 resource = { path = "../resource" }
 vk = { path = "../vk" }
 window = { path = "../window" }
+
+[[test]]
+name = "engine_test"
+path = "tests/engine_test.rs"
+harness = false

@@ -1,10 +1,10 @@
 
 use model::StaticVertex;
 use vk::{
-    VkCore, VkContext, OffscreenFramebufferWrapper, RenderpassWrapper, PipelineWrapper
+    VkError, VkCore, VkContext, RenderpassWrapper, PipelineWrapper
 };
 use window::{RenderEventHandler, WindowEventHandler, Window};
-use resource::{ResourceManager, RawResourceBearer, TexturePixelFormat};
+use resource::{ResourceManager, RawResourceBearer};
 use std::fmt::Debug;
 use vk_shader_macros::include_glsl;
 
@@ -36,66 +36,57 @@ impl Engine {
         M: 'static + Send + Debug,
         A: 'static + WindowEventHandler<M> + RenderEventHandler + RawResourceBearer
     {
-        unsafe {
+        // Creation of required components
+        let core = unsafe { VkCore::new(&window, vec![]).unwrap() };
+        let mut context = VkContext::new(&core, &window).unwrap();
+        let mut resource_manager = ResourceManager::new();
+        resource_manager.load_resources_from(&context, &app).unwrap();
 
-            // Creation of required components
-            let core = VkCore::new(&window, vec![]).unwrap();
-            let mut context = VkContext::new(&core, &window).unwrap();
-            let mut resource_manager = ResourceManager::new();
-            resource_manager.load_resources_from(&context, &app).unwrap();
-
-            // Create the pipelines
-            let (mut framebuffer_1, renderpass_1, mut pipeline_1) =
-                Self::create_pipeline(&context, &resource_manager);
-
-            // Release resources
-            pipeline_1.destroy_resources(&context);
-            renderpass_1.destroy_resources(&context);
-            framebuffer_1.destroy(&context).unwrap();
-            resource_manager.free_resources(&mut context).unwrap();
-        }
+        // Create the pipelines
+        let mut pipelines = unsafe {
+            Self::create_pipelines(&context, &resource_manager).unwrap()
+        };
 
         window.run(app);
+
+        // Release resources
+        for (renderpass, pipeline) in pipelines.iter_mut() {
+            pipeline.destroy_resources(&context);
+            renderpass.destroy_resources(&context);
+        }
+        resource_manager.free_resources(&mut context).unwrap();
     }
 
-    unsafe fn create_pipeline(
+    unsafe fn create_pipelines(
         context: &VkContext,
         resource_manager: &ResourceManager<VkContext>
-    ) -> (OffscreenFramebufferWrapper, RenderpassWrapper, PipelineWrapper) {
+    ) -> Result<Vec<(RenderpassWrapper, PipelineWrapper)>, VkError> {
 
-        let render_extent = ash::vk::Extent2D::builder()
-            .width(128)
-            .height(128)
-            .build();
-        let framebuffer = OffscreenFramebufferWrapper::new(
-            context,
-            render_extent.width,
-            render_extent.height,
-            TexturePixelFormat::Rgba,
-            TexturePixelFormat::None)
-            .unwrap();
-        let renderpass = RenderpassWrapper::new_with_offscreen_target(
-            context,
-            &framebuffer)
-            .unwrap();
-        let mut pipeline = PipelineWrapper::new();
-
-
-        pipeline.create_resources(
-            context,
-            resource_manager,
-            &renderpass,
-            VERTEX_SHADER,
-            FRAGMENT_SHADER,
-            VBO_INDEX_SCENE,
-            std::mem::size_of::<StaticVertex>() as u32,
-            std::mem::size_of::<SomeUniformBuffer>(),
-            ash::vk::ShaderStageFlags::VERTEX | ash::vk::ShaderStageFlags::FRAGMENT,
-            false,
-            TEXTURE_INDEX_TERRAIN,
-            false,
-            render_extent)
-            .unwrap();
-        (framebuffer, renderpass, pipeline)
+        let swapchain_size = context.get_swapchain_image_count();
+        let mut pipeline_set = Vec::new();
+        for image_index in 0..swapchain_size {
+            let render_extent = context.get_extent()?;
+            let renderpass = RenderpassWrapper::new_with_swapchain_target(
+                context,
+                image_index)?;
+            let mut pipeline = PipelineWrapper::new();
+            pipeline.create_resources(
+                context,
+                resource_manager,
+                &renderpass,
+                VERTEX_SHADER,
+                FRAGMENT_SHADER,
+                VBO_INDEX_SCENE,
+                std::mem::size_of::<StaticVertex>() as u32,
+                std::mem::size_of::<SomeUniformBuffer>(),
+                ash::vk::ShaderStageFlags::VERTEX,
+                false,
+                TEXTURE_INDEX_TERRAIN,
+                false,
+                render_extent
+            )?;
+            pipeline_set.push((renderpass, pipeline));
+        }
+        Ok(pipeline_set)
     }
 }
