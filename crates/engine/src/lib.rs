@@ -1,28 +1,16 @@
+mod renderable;
+mod scene;
 
-use model::StaticVertex;
-use vk_renderer::{
-    VkError, VkCore, VkContext, RenderpassWrapper, PipelineWrapper
+pub use renderable::{
+    Renderable,
+    stock::StockRenderable
 };
+pub use scene::{Scene, SceneFactory};
+
+use vk_renderer::{VkError, VkCore, VkContext, RenderpassWrapper, PipelineWrapper};
 use window::{RenderEventHandler, WindowEventHandler, Window};
 use resource::{ResourceManager, RawResourceBearer};
 use std::fmt::Debug;
-use vk_shader_macros::include_glsl;
-
-const VBO_INDEX_SCENE: u32 = 0;
-const SCENE_MODEL_BYTES: &[u8] =
-    include_bytes!("../../../resources/test/models/Cubes.dae");
-
-const TEXTURE_INDEX_TERRAIN: u32 = 0;
-const TERRAIN_TEXTURE_BYTES: &[u8] =
-    include_bytes!("../../../resources/test/textures/simple_outdoor_texture.jpg");
-
-const VERTEX_SHADER: &[u32] = include_glsl!("../../resources/test/shaders/simple.vert");
-const FRAGMENT_SHADER: &[u32] = include_glsl!("../../resources/test/shaders/simple.frag");
-
-struct SomeUniformBuffer {
-    pub x: f32,
-    pub y: f32
-}
 
 pub struct Engine {}
 
@@ -34,7 +22,7 @@ impl Engine {
 
     pub fn run<M, A>(&self, window: Window<M>, app: A) where
         M: 'static + Send + Debug,
-        A: 'static + WindowEventHandler<M> + RenderEventHandler + RawResourceBearer
+        A: 'static + WindowEventHandler<M> + RenderEventHandler + RawResourceBearer + SceneFactory
     {
         // Creation of required components
         let core = unsafe { VkCore::new(&window, vec![]).unwrap() };
@@ -43,8 +31,10 @@ impl Engine {
         resource_manager.load_resources_from(&context, &app).unwrap();
 
         // Create the pipelines
+        let scene = app.get_scene();
+        let renderable = scene.get_renderable();
         let mut pipelines = unsafe {
-            Self::create_pipelines(&context, &resource_manager, &app).unwrap()
+            Self::create_pipelines(&context, &resource_manager, &renderable).unwrap()
         };
 
         window.run(app);
@@ -57,36 +47,19 @@ impl Engine {
         resource_manager.free_resources(&mut context).unwrap();
     }
 
-    unsafe fn create_pipelines<A: RawResourceBearer>(
+    unsafe fn create_pipelines(
         context: &VkContext,
         resource_manager: &ResourceManager<VkContext>,
-        app: &A
+        renderable: &Box<dyn Renderable>
     ) -> Result<Vec<(RenderpassWrapper, PipelineWrapper)>, VkError> {
 
         let swapchain_size = context.get_swapchain_image_count();
         let mut pipeline_set = Vec::new();
-        let shader_indices = app.get_shader_resource_ids();
         for image_index in 0..swapchain_size {
-            let render_extent = context.get_extent()?;
-            let renderpass = RenderpassWrapper::new_with_swapchain_target(
-                context,
-                image_index)?;
-            let mut pipeline = PipelineWrapper::new();
-            pipeline.create_resources(
+            let (renderpass, pipeline) = renderable.make_pipeline(
                 context,
                 resource_manager,
-                &renderpass,
-                shader_indices[0],
-                shader_indices[1],
-                VBO_INDEX_SCENE,
-                std::mem::size_of::<StaticVertex>() as u32,
-                std::mem::size_of::<SomeUniformBuffer>(),
-                ash::vk::ShaderStageFlags::VERTEX,
-                false,
-                TEXTURE_INDEX_TERRAIN,
-                false,
-                render_extent
-            )?;
+                image_index)?;
             pipeline_set.push((renderpass, pipeline));
         }
         Ok(pipeline_set)

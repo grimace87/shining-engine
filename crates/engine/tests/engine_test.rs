@@ -5,7 +5,7 @@
 ///
 /// This test creates a more-or-less functioning graphics application.
 
-use engine::Engine;
+use engine::{Engine, SceneFactory, Scene, Renderable, StockRenderable};
 use vk_renderer::{TextureCodec, util::decode_texture};
 use window::{
     RenderCycleEvent, RenderEventHandler, WindowEventHandler, WindowStateEvent, Window,
@@ -111,9 +111,27 @@ impl RenderEventHandler for EngineTestApp {
     fn on_render_cycle_event(&self, _event: RenderCycleEvent) {}
 }
 
+impl SceneFactory for EngineTestApp {
+    fn get_scene(&self) -> Box<dyn Scene> {
+        Box::new(EngineTestScene::new())
+    }
+}
+
 impl EngineTestApp {
     fn new(message_proxy: MessageProxy<WindowCommand<()>>) -> Self {
         Self { message_proxy }
+    }
+}
+
+pub struct EngineTestScene {}
+
+impl EngineTestScene {
+    pub fn new() -> Self { Self {} }
+}
+
+impl Scene for EngineTestScene {
+    fn get_renderable(&self) -> Box<dyn Renderable> {
+        Box::new(StockRenderable::new(0))
     }
 }
 

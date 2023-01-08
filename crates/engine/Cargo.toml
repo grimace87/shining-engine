@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 ash = { workspace = true }
 vk-shader-macros = { workspace = true }
+cgmath = "0.18.0"
 model = { path = "../model" }
 resource = { path = "../resource" }
 vk_renderer = { path = "../vk_renderer" }
