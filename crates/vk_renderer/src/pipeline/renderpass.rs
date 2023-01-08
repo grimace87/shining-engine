@@ -77,10 +77,7 @@ impl RenderpassWrapper {
         };
 
         // Define subpass with single colour attachment
-        let surface_format = context.get_surface_formats()?
-            .first()
-            .unwrap()
-            .format;
+        let surface_format = context.get_surface_format().format;
         let attachments = [
             vk::AttachmentDescription::builder()
                 .format(surface_format)

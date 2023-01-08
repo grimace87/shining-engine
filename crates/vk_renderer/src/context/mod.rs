@@ -138,16 +138,9 @@ impl VkContext {
         self.swapchain.get_depth_image()
     }
 
-    /// Query supported surface formats for the currently selected physical device and the
-    /// current surface
-    pub unsafe fn get_surface_formats(&self) -> Result<Vec<vk::SurfaceFormatKHR>, VkError> {
-        self.surface_fn.get_physical_device_surface_formats(
-            self.borrowed_physical_device_handle,
-            self.surface
-        )
-            .map_err(|e| {
-                VkError::OpFailed(format!("{:?}", e))
-            })
+    /// Query the surface format used by the current swapchain
+    pub unsafe fn get_surface_format(&self) -> vk::SurfaceFormatKHR {
+        self.swapchain.get_surface_format()
     }
 
     /// Create the swapchain; any previously-created swapchain should be destroyed first

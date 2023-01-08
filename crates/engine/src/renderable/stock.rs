@@ -64,7 +64,7 @@ impl Renderable for StockRenderable {
                 resource_manager,
                 &renderpass,
                 0,
-                0,
+                1,
                 VBO_INDEX_SCENE,
                 std::mem::size_of::<StaticVertex>() as u32,
                 std::mem::size_of::<CameraUbo>(),

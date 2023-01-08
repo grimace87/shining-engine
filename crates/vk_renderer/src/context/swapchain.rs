@@ -16,6 +16,7 @@ pub const MAX_SWAPCHAIN_SIZE: u32 = 3;
 
 pub struct SwapchainWrapper {
     swapchain: vk::SwapchainKHR,
+    surface_format: vk::SurfaceFormatKHR,
     image_views: Vec<vk::ImageView>,
     depth_image: Option<ImageWrapper>
 }
@@ -25,6 +26,7 @@ impl Default for SwapchainWrapper {
     fn default() -> Self {
         SwapchainWrapper {
             swapchain: vk::SwapchainKHR::null(),
+            surface_format: vk::SurfaceFormatKHR::default(),
             image_views: vec![],
             depth_image: None
         }
@@ -40,7 +42,7 @@ impl SwapchainWrapper {
         surface: vk::SurfaceKHR,
         extent: vk::Extent2D
     ) -> Result<SwapchainWrapper, VkError> {
-        let swapchain = Self::create_swapchain(
+        let (swapchain, surface_format) = Self::create_swapchain(
             core,
             surface_fn,
             surface,
@@ -61,6 +63,7 @@ impl SwapchainWrapper {
 
         Ok(SwapchainWrapper {
             swapchain,
+            surface_format,
             image_views,
             depth_image: Some(depth_image)
         })
@@ -75,6 +78,10 @@ impl SwapchainWrapper {
             context.device.destroy_image_view(*image_view, None);
         }
         swapchain_fn.destroy_swapchain(self.swapchain, None);
+    }
+
+    pub fn get_surface_format(&self) -> vk::SurfaceFormatKHR {
+        self.surface_format
     }
 
     pub fn get_image_count(&self) -> usize {
@@ -102,7 +109,7 @@ impl SwapchainWrapper {
         surface: vk::SurfaceKHR,
         swapchain_fn: &Swapchain,
         previous_swapchain: vk::SwapchainKHR
-    ) -> Result<vk::SwapchainKHR, VkError> {
+    ) -> Result<(vk::SwapchainKHR, vk::SurfaceFormatKHR), VkError> {
 
         // Check for support and get some known-supported parameters
         let (
@@ -136,7 +143,7 @@ impl SwapchainWrapper {
                 VkError::OpFailed(format!("{:?}", e))
             })?;
 
-        Ok(swapchain)
+        Ok((swapchain, surface_format))
     }
 
     /// Create the image views for the swapchain
