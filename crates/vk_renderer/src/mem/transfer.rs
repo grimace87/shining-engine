@@ -16,7 +16,7 @@ impl ManagesMemoryTransfers for MemoryAllocator {
         init_data: &[T]
     ) -> Result<(), VkError> {
 
-        if self.staging_buffer_parameters.is_some() {
+        if self.staging_buffer.is_some() {
             self.transfer_data_to_new_buffer_with_staging_buffer(
                 transfer_queue, buffer, init_data)
         } else {
@@ -48,7 +48,7 @@ impl ManagesMemoryTransfers for MemoryAllocator {
         init_data: &[T]
     ) -> Result<(), VkError> {
 
-        let Some(staging_parameters) = &self.staging_buffer_parameters else {
+        let Some(staging_parameters) = &self.staging_buffer else {
             return Err(VkError::OpFailed(
                 "Internal error: transferring from staging without a buffer".to_owned()
             ));
@@ -237,7 +237,7 @@ impl ManagesMemoryTransfers for MemoryAllocator {
             panic!("Image data does not match expected size");
         }
 
-        if self.staging_buffer_parameters.is_some() {
+        if self.staging_buffer.is_some() {
             self.transfer_data_to_new_texture_with_staging_buffer(
                 transfer_queue, width, height, image_dst, aspect, expected_layout, layer_data)
         } else {
@@ -339,7 +339,7 @@ impl ManagesMemoryTransfers for MemoryAllocator {
         layer_data: &[Vec<u8>]
     ) -> Result<(), VkError> {
 
-        let Some(staging_parameters) = &self.staging_buffer_parameters else {
+        let Some(staging_parameters) = &self.staging_buffer else {
             return Err(VkError::OpFailed(
                 "Internal error: transferring from staging without a buffer".to_owned()
             ));

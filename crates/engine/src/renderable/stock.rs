@@ -5,19 +5,6 @@ use resource::ResourceManager;
 use vk_renderer::{VkContext, VkError, RenderpassWrapper, PipelineWrapper};
 use ash::vk;
 use cgmath::{Matrix4, SquareMatrix, Rad};
-use vk_shader_macros::include_glsl;
-
-const VBO_INDEX_SCENE: u32 = 0;
-const SCENE_MODEL_BYTES: &[u8] =
-    include_bytes!("../../../../resources/test/models/Cubes.dae");
-
-const TEXTURE_INDEX_TERRAIN: u32 = 0;
-const TERRAIN_TEXTURE_BYTES: &[u8] =
-    include_bytes!("../../../../resources/test/textures/simple_outdoor_texture.jpg");
-
-const VERTEX_SHADER: &[u32] = include_glsl!("../../resources/test/shaders/simple.vert");
-
-const FRAGMENT_SHADER: &[u32] = include_glsl!("../../resources/test/shaders/simple.frag");
 
 #[repr(C)]
 pub struct CameraUbo {
@@ -65,12 +52,12 @@ impl Renderable for StockRenderable {
                 &renderpass,
                 0,
                 1,
-                VBO_INDEX_SCENE,
+                0,
                 std::mem::size_of::<StaticVertex>() as u32,
                 std::mem::size_of::<CameraUbo>(),
                 vk::ShaderStageFlags::VERTEX,
                 false,
-                TEXTURE_INDEX_TERRAIN,
+                0,
                 false,
                 render_extent
             )?;

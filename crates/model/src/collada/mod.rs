@@ -51,7 +51,7 @@ impl COLLADA {
             for model_name in merge_config.geometries.iter() {
                 let model_index = pre_merge_models.iter()
                     .position(|m| m.name.eq(model_name))
-                    .expect(format!("Did not find mesh named {}", model_name).as_str());
+                    .unwrap_or_else(|| panic!("Did not find mesh named {}", model_name));
                 let model = pre_merge_models.remove(model_index);
                 source_models.push(model);
             }
@@ -66,7 +66,7 @@ impl COLLADA {
 
     /// Look up the transformation matrix for a given geometry.
     /// For internal use.
-    fn find_transform_for(&self, geometry_id: &String) -> Option<&Matrix> {
+    fn find_transform_for(&self, geometry_id: &str) -> Option<&Matrix> {
         let node = self.library_visual_scenes.visual_scene.nodes.iter().find(|n| {
             match n {
                 Node {
@@ -77,7 +77,7 @@ impl COLLADA {
                     instance_camera: _instance_camera,
                     instance_light: _instance_light,
                     instance_geometry: Some(i)
-                } => &i.url[1..i.url.len()] == geometry_id.as_str(),
+                } => &i.url[1..i.url.len()] == geometry_id,
                 _ => false
             }
         });
@@ -89,7 +89,7 @@ impl COLLADA {
 
     /// Transform a set of vertices using a given matrix.
     /// For internal use.
-    fn transform_vertices(vertices: &mut Vec<StaticVertex>, matrix: &Matrix) {
+    fn transform_vertices(vertices: &mut [StaticVertex], matrix: &Matrix) {
         let m = matrix.decode_element_data();
         for vertex in vertices.iter_mut() {
 

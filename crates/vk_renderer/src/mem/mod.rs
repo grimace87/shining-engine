@@ -141,11 +141,10 @@ struct MemoryAllocationParameters {
     memory_type_bulk_performance: u32,
     memory_type_host_visible: u32,
     memory_type_staging_buffer: Option<u32>,
-    prefer_image_tiling: bool
+    _prefer_image_tiling: bool
 }
 
-struct StagingBufferParameters {
-    memory_type: u32,
+struct StagingBuffer {
     buffer: vk::Buffer,
     allocation: MemoryAllocation
 }
@@ -158,11 +157,10 @@ pub struct MemoryAllocatorCreateInfo {
 }
 
 pub struct MemoryAllocator {
-    physical_device: vk::PhysicalDevice,
     device: Device,
     allocation_parameters: MemoryAllocationParameters,
     transfer_command_buffer: vk::CommandBuffer,
-    staging_buffer_parameters: Option<StagingBufferParameters>
+    staging_buffer: Option<StagingBuffer>
 }
 
 /// Memory allocator for buffers and images.
@@ -198,16 +196,15 @@ impl MemoryAllocator {
         };
 
         Ok(Self {
-            physical_device: allocator_info.physical_device,
             device: allocator_info.device,
             allocation_parameters,
             transfer_command_buffer: allocator_info.transfer_command_buffer,
-            staging_buffer_parameters
+            staging_buffer: staging_buffer_parameters
         })
     }
 
     pub unsafe fn destroy(&mut self, transfer_queue: &Queue) {
-        if let Some(staging_buffer_parameters) = &self.staging_buffer_parameters {
+        if let Some(staging_buffer_parameters) = &self.staging_buffer {
             self.device.destroy_buffer(staging_buffer_parameters.buffer, None);
             self.device.free_memory(staging_buffer_parameters.allocation.memory, None);
         }
@@ -263,9 +260,9 @@ impl MemoryAllocator {
         }
 
         // Decide which memory types to use for different things
-        let mut chosen_type_bulk_performance: Option<u32> = None;
-        let mut chosen_type_uniform_buffer: Option<u32> = None;
-        let mut chosen_type_staging_buffer: Option<u32> = None;
+        let chosen_type_bulk_performance: Option<u32>;
+        let chosen_type_uniform_buffer: Option<u32>;
+        let chosen_type_staging_buffer: Option<u32>;
         let mut prefer_image_tiling = false;
 
         // Scenarios where there's nothing specialised for host accessibility (all device-local)
@@ -340,14 +337,14 @@ impl MemoryAllocator {
             memory_type_bulk_performance: performance_type,
             memory_type_host_visible: uniform_type,
             memory_type_staging_buffer: chosen_type_staging_buffer,
-            prefer_image_tiling
+            _prefer_image_tiling: prefer_image_tiling
         })
     }
 
     unsafe fn create_staging_buffer_parameters(
         device: &Device,
         memory_type: u32
-    ) -> Result<StagingBufferParameters, VkError> {
+    ) -> Result<StagingBuffer, VkError> {
 
         let buffer_create_info = vk::BufferCreateInfo::builder()
             .size(INITIAL_STAGING_BUFFER_SIZE)
@@ -373,8 +370,7 @@ impl MemoryAllocator {
                 format!("Error binding staging buffer memory: {:?}", e)
             ))?;
 
-        Ok(StagingBufferParameters {
-            memory_type,
+        Ok(StagingBuffer {
             buffer,
             allocation: MemoryAllocation {
                 size: requirements.size,

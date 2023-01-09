@@ -21,7 +21,7 @@ impl Config {
         let file_metadata = std::fs::metadata(path)
             .expect("Failed to read config file metadata");
         let mut file_bytes = vec![0; file_metadata.len() as usize];
-        collada_file.read(&mut file_bytes)
+        collada_file.read_exact(&mut file_bytes)
             .expect("Buffer overflow reading from config file");
         toml::from_slice(file_bytes.as_slice()).unwrap()
     }

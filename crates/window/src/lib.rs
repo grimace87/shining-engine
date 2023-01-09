@@ -4,7 +4,7 @@ pub use winit::event::VirtualKeyCode as KeyCode;
 pub use winit::event::ElementState as KeyState;
 
 use winit::{
-    event_loop::{EventLoop, ControlFlow},
+    event_loop::{EventLoop, EventLoopBuilder, ControlFlow},
     event::{Event, KeyboardInput, WindowEvent}
 };
 use raw_window_handle::{HasRawWindowHandle, RawWindowHandle, HasRawDisplayHandle, RawDisplayHandle};
@@ -50,7 +50,7 @@ pub struct Window<T: 'static + Send + Debug> {
 impl<T: 'static + Send + Debug> Window<T> {
 
     pub fn new(app_title: &str) -> Self {
-        let event_loop = EventLoop::with_user_event();
+        let event_loop = EventLoopBuilder::with_user_event().build();
         let window = winit::window::WindowBuilder::new()
             .with_title(app_title)
             .build(&event_loop)

@@ -140,7 +140,7 @@ impl PipelineWrapper {
 
         // Texture image
         //TODO - Vec from texture_indices.iter().map(|index| ...).collect()
-        let mut texture_image_view: vk::ImageView = resource_manager
+        let texture_image_view: vk::ImageView = resource_manager
             .get_texture_handle(texture_index as u32)?
             .image_view;
 
@@ -148,7 +148,7 @@ impl PipelineWrapper {
         let sampler_info = vk::SamplerCreateInfo::builder()
             .min_filter(vk::Filter::LINEAR)
             .mag_filter(vk::Filter::LINEAR);
-        let mut sampler: vk::Sampler = //TODO - Vec from texture_image_views.iter().map(|_| ...).collect()
+        let sampler: vk::Sampler = //TODO - Vec from texture_image_views.iter().map(|_| ...).collect()
             context.device
                 .create_sampler(&sampler_info, None)
                 .map_err(|e| VkError::OpFailed(format!("Error creating sampler: {:?}", e)))?;

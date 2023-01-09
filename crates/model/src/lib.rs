@@ -57,7 +57,6 @@ pub fn parse_directory(source_dir: &Path) -> Result<(), String> {
 /// Traverse contents of directory and process COLLADA files. Also processes any matching
 /// config files found for them.
 fn convert_collada_files_in_directory(collada_models_dir: &Path, binary_models_dir: &Path) {
-    let mut files_processed = 0;
     for entry in std::fs::read_dir(collada_models_dir).unwrap() {
         let entry = entry.unwrap();
         let path = entry.path();
@@ -74,7 +73,6 @@ fn convert_collada_files_in_directory(collada_models_dir: &Path, binary_models_d
                     false => Config::default()
                 };
                 convert_collada_file(&path, config, binary_models_dir);
-                files_processed += 1;
             },
             _ => continue
         };
@@ -88,7 +86,7 @@ fn convert_collada_file(source_file: &Path, config: Config, binary_models_dir: &
     let file_metadata = std::fs::metadata(source_file)
         .expect("Failed to read file metadata");
     let mut file_bytes = vec![0; file_metadata.len() as usize];
-    collada_file.read(&mut file_bytes)
+    collada_file.read_exact(&mut file_bytes)
         .expect("Buffer overflow reading from file");
     let collada = COLLADA::new(file_bytes.as_slice());
     let models = collada.extract_models(config);

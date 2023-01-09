@@ -11,6 +11,7 @@ const SEMANTIC_TEX_COORD: &str = "TEXCOORD";
 /// GeometryLibrary struct
 /// Representation for a library_geometries XML tag
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct GeometryLibrary {
     #[serde(rename = "geometry", default)]
     pub items: Vec<Geometry>
@@ -19,6 +20,7 @@ pub struct GeometryLibrary {
 /// Geometry struct
 /// Representation for items under a geometry XML tag
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct Geometry {
     pub id: String,
     pub name: String,
@@ -28,6 +30,7 @@ pub struct Geometry {
 /// Mesh struct
 /// Representation for a mesh XML tag
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct Mesh {
     vertices: Vertices,
     triangles: Triangles,
@@ -154,6 +157,7 @@ impl Mesh {
 /// Vertices struct
 /// Representation for a vertices XML tag
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct Vertices {
     id: String,
     input: Input
@@ -162,6 +166,7 @@ struct Vertices {
 /// Input struct
 /// Representation for an input XML tag
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct Input {
     semantic: String,
     source: String,
@@ -173,6 +178,7 @@ struct Input {
 /// Triangles struct
 /// Representation for a triangles XML tag
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct Triangles {
     count: i32,
 
@@ -186,6 +192,7 @@ struct Triangles {
 /// IntegerArray struct
 /// Representation for a polygons XML tag
 #[derive(Debug, Deserialize, Default)]
+#[allow(dead_code)]
 struct IntegerArray {
 
     #[serde(rename = "$value", default)]
@@ -195,6 +202,7 @@ struct IntegerArray {
 /// Source struct
 /// Representation for items under a source XML tag
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct Source {
     id: String,
     technique_common: TechniqueCommon,
@@ -206,6 +214,7 @@ struct Source {
 /// FloatArray struct
 /// Representation for a float_data XML tag
 #[derive(Debug, Deserialize, Default)]
+#[allow(dead_code)]
 struct FloatArray {
     id: String,
     count: i32,
@@ -217,6 +226,7 @@ struct FloatArray {
 /// TechniqueCommon struct
 /// Representation for a technique_common XML tag
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct TechniqueCommon {
     accessor: Accessor
 }
@@ -224,6 +234,7 @@ struct TechniqueCommon {
 /// Accessor struct
 /// Representation for a accessor XML tag
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct Accessor {
     source: String,
     count: i32,
@@ -236,6 +247,7 @@ struct Accessor {
 /// Param struct
 /// Representation for items under a param XML tag
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct Param {
     name: String,
 
@@ -246,6 +258,7 @@ struct Param {
 /// VisualScenesLibrary struct
 /// Representation for a library_visual_scenes XML tag
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct VisualScenesLibrary {
     pub visual_scene: VisualScene
 }
@@ -253,6 +266,7 @@ pub struct VisualScenesLibrary {
 /// VisualScene struct
 /// Representation for a visual_scene XML tag
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct VisualScene {
     id: String,
     name: String,
@@ -264,6 +278,7 @@ pub struct VisualScene {
 /// Node struct
 /// Representation for items under a nodes XML tag
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct Node {
     pub id: String,
     pub name: String,
@@ -286,6 +301,7 @@ pub struct Node {
 /// Matrix struct
 /// Representation for a matrix XML tag
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct Matrix {
     sid: String,
 
@@ -305,6 +321,7 @@ impl Matrix {
 /// Instance struct
 /// Representation for an instance_geometry, instance_camera, or instance_light XML tag
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct Instance {
     pub url: String
 }

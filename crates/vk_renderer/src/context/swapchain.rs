@@ -89,7 +89,7 @@ impl SwapchainWrapper {
     }
 
     pub fn get_image_view(&self, index: usize) -> Result<vk::ImageView, VkError> {
-        if index < 0 || index >= self.image_views.len() {
+        if index >= self.image_views.len() {
             return Err(VkError::EngineError(format!("Bad swapchain index: {}", index)));
         }
         Ok(self.image_views[index])
