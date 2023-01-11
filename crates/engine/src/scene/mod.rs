@@ -1,3 +1,5 @@
+pub mod stock;
+
 use crate::Renderable;
 
 pub trait SceneFactory {

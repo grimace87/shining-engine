@@ -3,7 +3,8 @@ mod scene;
 
 pub use renderable::{
     Renderable,
-    stock::StockRenderable
+    stock::StockRenderable,
+    null::NullRenderable
 };
 pub use scene::{Scene, SceneFactory};
 
