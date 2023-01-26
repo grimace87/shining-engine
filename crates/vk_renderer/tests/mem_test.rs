@@ -91,14 +91,16 @@ impl VulkanTestApp {
         unsafe {
 
             // Creation
-            let core = VkCore::new(window, vec![]).unwrap();
+            let mut core = VkCore::new(window, vec![]).unwrap();
             let mut context = VkContext::new(&core, window).unwrap();
             let resource_source = ResourceSource {};
             let mut resource_manager = ResourceManager::new();
             resource_manager.load_resources_from(&context, &resource_source).unwrap();
 
-            // Release resources
+            // Release
             resource_manager.free_resources(&mut context).unwrap();
+            context.teardown();
+            core.teardown();
         }
         Self { message_proxy }
     }

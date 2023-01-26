@@ -117,7 +117,7 @@ impl VulkanTestApp {
         unsafe {
 
             // Creation of required components
-            let core = VkCore::new(window, vec![]).unwrap();
+            let mut core = VkCore::new(window, vec![]).unwrap();
             let mut context = VkContext::new(&core, window).unwrap();
             let resource_source = ResourceSource {};
             let mut resource_manager = ResourceManager::new();
@@ -127,11 +127,13 @@ impl VulkanTestApp {
             let (mut framebuffer_1, renderpass_1, pipeline_1) =
                 Self::create_pipeline(&context, &resource_manager);
 
-            // Release resources
+            // Release
             pipeline_1.destroy_resources(&context);
             renderpass_1.destroy_resources(&context);
             framebuffer_1.destroy(&context).unwrap();
             resource_manager.free_resources(&mut context).unwrap();
+            context.teardown();
+            core.teardown();
         }
         Self { message_proxy }
     }

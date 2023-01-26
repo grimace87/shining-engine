@@ -20,7 +20,7 @@ pub enum WindowStateEvent {
 pub enum RenderCycleEvent {
     PrepareUpdate,
     RenderFrame,
-    RecreateSurface
+    RecreatingSurface
 }
 
 pub trait WindowEventHandler<T: 'static> {

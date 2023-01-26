@@ -76,11 +76,8 @@ impl VkCore {
             physical_device_features
         })
     }
-}
 
-impl Drop for VkCore {
-
-    fn drop(&mut self) {
+    pub fn teardown(&mut self) {
         unsafe {
             if let Some((debug_utils, utils_messenger)) = &self.debug_utils {
                 debug_utils.destroy_debug_utils_messenger(*utils_messenger, None);

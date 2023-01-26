@@ -50,6 +50,17 @@ impl VkContext {
         })
     }
 
+    pub fn teardown(&mut self) {
+        unsafe {
+            self.destroy_swapchain_resources();
+            self.surface_fn.destroy_surface(self.surface, None);
+            self.mem_allocator.destroy(&self.transfer_queue);
+            self.transfer_queue.destroy(&self.device);
+            self.graphics_queue.destroy(&self.device);
+            self.device.destroy_device(None);
+        }
+    }
+
     /// Create a new instance, but not yet creating the swapchain. For internal use.
     unsafe fn new_with_surface_without_swapchain<T>(
         core: &VkCore,
@@ -199,19 +210,5 @@ impl VkContext {
     /// Getter for the memory allocator
     pub fn get_mem_allocator(&self) -> (&MemoryAllocator, &Queue) {
         (&self.mem_allocator, &self.transfer_queue)
-    }
-}
-
-impl Drop for VkContext {
-
-    fn drop(&mut self) {
-        unsafe {
-            self.destroy_swapchain_resources();
-            self.surface_fn.destroy_surface(self.surface, None);
-            self.mem_allocator.destroy(&self.transfer_queue);
-            self.transfer_queue.destroy(&self.device);
-            self.graphics_queue.destroy(&self.device);
-            self.device.destroy_device(None);
-        }
     }
 }

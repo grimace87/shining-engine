@@ -23,8 +23,10 @@ impl VulkanTestApp {
         message_proxy: MessageProxy<WindowCommand<()>>
     ) -> Self {
         unsafe {
-            let core = VkCore::new(window, vec![]).unwrap();
-            VkContext::new(&core, window).unwrap();
+            let mut core = VkCore::new(window, vec![]).unwrap();
+            let mut context = VkContext::new(&core, window).unwrap();
+            context.teardown();
+            core.teardown();
         }
         Self { message_proxy }
     }
