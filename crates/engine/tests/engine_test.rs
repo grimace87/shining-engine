@@ -8,7 +8,7 @@
 use engine::{Engine, SceneFactory, Scene, Renderable, StockRenderable};
 use vk_renderer::{TextureCodec, util::decode_texture};
 use window::{
-    RenderCycleEvent, RenderEventHandler, WindowEventHandler, WindowStateEvent, Window,
+    RenderCycleEvent, RenderEventHandler, WindowEventHandler, WindowStateEvent,
     MessageProxy, WindowCommand
 };
 use model::{COLLADA, Config};

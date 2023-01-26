@@ -1,11 +1,8 @@
 
 use window::{
     RenderCycleEvent, WindowStateEvent, Window, WindowCommand, WindowEventLooper, MessageProxy,
+    Event, WindowEvent, ControlFlow,
     event::{RenderEventHandler, WindowEventHandler}
-};
-use winit::{
-    event::{Event, WindowEvent},
-    event_loop::ControlFlow
 };
 
 #[derive(PartialEq, Debug)]

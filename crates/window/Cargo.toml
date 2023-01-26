@@ -9,13 +9,9 @@ raw-window-handle = { workspace = true }
 
 [dev-dependencies]
 window = { path = "." }
+resource = { path = "../resource" }
 
 [[test]]
-name = "closes_on_command"
-path = "tests/closes_on_command.rs"
-harness = false
-
-[[test]]
-name = "passes_custom_commands"
-path = "tests/passes_custom_commands.rs"
+name = "user_close"
+path = "tests/user_close.rs"
 harness = false

@@ -16,3 +16,8 @@ window = { path = "../window" }
 name = "engine_test"
 path = "tests/engine_test.rs"
 harness = false
+
+[[test]]
+name = "passes_custom_commands"
+path = "tests/passes_custom_commands.rs"
+harness = false
