@@ -6,7 +6,10 @@ pub use renderable::{
     stock::StockRenderable,
     null::NullRenderable
 };
-pub use scene::{Scene, SceneFactory};
+pub use scene::{
+    Scene, SceneFactory,
+    stock::{StockScene, StockSceneFactory}
+};
 
 use vk_renderer::{VkError, VkCore, VkContext, RenderpassWrapper, PipelineWrapper};
 use window::{

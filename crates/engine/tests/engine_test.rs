@@ -5,11 +5,10 @@
 ///
 /// This test creates a more-or-less functioning graphics application.
 
-use engine::{Engine, SceneFactory, Scene, Renderable, StockRenderable};
+use engine::{Engine, SceneFactory, Scene, StockScene};
 use vk_renderer::{TextureCodec, util::decode_texture};
 use window::{
-    RenderCycleEvent, RenderEventHandler, WindowEventHandler, WindowStateEvent,
-    MessageProxy, WindowCommand
+    RenderCycleEvent, RenderEventHandler, WindowEventHandler, WindowStateEvent, WindowCommand
 };
 use model::{COLLADA, Config};
 use resource::{
@@ -32,9 +31,7 @@ const VERTEX_SHADER: &[u32] = include_glsl!("../../resources/test/shaders/simple
 const SHADER_INDEX_FRAGMENT: u32 = 1;
 const FRAGMENT_SHADER: &[u32] = include_glsl!("../../resources/test/shaders/simple.frag");
 
-struct EngineTestApp {
-    message_proxy: MessageProxy<WindowCommand<()>>
-}
+struct EngineTestApp {}
 
 impl RawResourceBearer for EngineTestApp {
 
@@ -96,14 +93,7 @@ impl RawResourceBearer for EngineTestApp {
 }
 
 impl WindowEventHandler<()> for EngineTestApp {
-
-    fn on_window_state_event(&mut self, event: WindowStateEvent) {
-        if event == WindowStateEvent::FocusGained {
-            self.message_proxy.send_event(WindowCommand::RequestClose)
-                .unwrap();
-        }
-    }
-
+    fn on_window_state_event(&mut self, _event: WindowStateEvent) {}
     fn on_window_custom_event(&mut self, _event: ()) {}
 }
 
@@ -113,25 +103,13 @@ impl RenderEventHandler for EngineTestApp {
 
 impl SceneFactory for EngineTestApp {
     fn get_scene(&self) -> Box<dyn Scene> {
-        Box::new(EngineTestScene::new())
+        Box::new(StockScene::new(0))
     }
 }
 
 impl EngineTestApp {
-    fn new(message_proxy: MessageProxy<WindowCommand<()>>) -> Self {
-        Self { message_proxy }
-    }
-}
-
-pub struct EngineTestScene {}
-
-impl EngineTestScene {
-    pub fn new() -> Self { Self {} }
-}
-
-impl Scene for EngineTestScene {
-    fn get_renderable(&self) -> Box<dyn Renderable> {
-        Box::new(StockRenderable::new(0))
+    fn new() -> Self {
+        Self {}
     }
 }
 
@@ -140,6 +118,12 @@ impl Scene for EngineTestScene {
 fn main() {
     let engine = Engine::<()>::new("Engine Test");
     let message_proxy = engine.new_message_proxy();
-    let app = EngineTestApp::new(message_proxy.clone());
+    let app = EngineTestApp::new();
+    let join_handle = std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(3000));
+        message_proxy.send_event(WindowCommand::RequestClose)
+            .unwrap();
+    });
     engine.run(app);
+    join_handle.join().unwrap();
 }
