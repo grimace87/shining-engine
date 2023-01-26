@@ -4,5 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+model = { path = "../../crates/model" }
+engine = { path = "../../crates/engine" }
+resource = { path = "../../crates/resource" }
 window = { path = "../../crates/window" }
 vk_renderer = { path = "../../crates/vk_renderer" }
+vk-shader-macros = { workspace = true }

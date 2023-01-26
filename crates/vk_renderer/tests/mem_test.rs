@@ -8,7 +8,7 @@
 
 use vk_renderer::{VkCore, VkContext, TextureCodec, util::decode_texture};
 use window::{
-    RenderCycleEvent, RenderEventHandler,
+    WindowEventLooper, RenderCycleEvent, RenderEventHandler, ControlFlow, Event, WindowEvent,
     WindowEventHandler, WindowStateEvent, Window, MessageProxy, WindowCommand
 };
 use std::fmt::Debug;
@@ -85,7 +85,7 @@ struct VulkanTestApp {
 impl VulkanTestApp {
 
     fn new<T: Send + Debug>(
-        window: &Window<T>,
+        window: &Window,
         message_proxy: MessageProxy<WindowCommand<()>>
     ) -> Self {
         unsafe {
@@ -123,8 +123,45 @@ impl RenderEventHandler for VulkanTestApp {
 /// Test: send a RequestClose command via the event loop proxy after the window has gained focus.
 /// Expected: window opens and then exits very quickly without issue.
 fn main() {
-    let window = Window::<()>::new("Vulkan Core Test");
-    let message_proxy = window.new_message_proxy();
-    let app = VulkanTestApp::new(&window, message_proxy.clone());
-    window.run(app);
+    let looper = WindowEventLooper::<()>::new();
+    let message_proxy = looper.create_proxy();
+    let window = Window::new("Vulkan Mem Test", &looper);
+    let mut app = VulkanTestApp::new::<()>(&window, message_proxy.clone());
+    let running_window_id = window.get_window_id();
+    let _code = looper.run_loop(move |event, _, control_flow| {
+        *control_flow = ControlFlow::Wait;
+        match event {
+            Event::UserEvent(command) => {
+                match command {
+                    WindowCommand::RequestClose => {
+                        *control_flow = ControlFlow::Exit
+                    },
+                    WindowCommand::RequestRedraw => {
+                        window.request_redraw();
+                    },
+                    WindowCommand::Custom(e) => {
+                        app.on_window_custom_event(e);
+                        ()
+                    }
+                }
+            },
+            Event::WindowEvent { event, window_id }
+            if window_id == running_window_id => {
+                match event {
+                    WindowEvent::Focused(focused) => {
+                        match focused {
+                            true => app.on_window_state_event(WindowStateEvent::FocusGained),
+                            false => app.on_window_state_event(WindowStateEvent::FocusLost)
+                        };
+                    },
+                    WindowEvent::CloseRequested => {
+                        app.on_window_state_event(WindowStateEvent::Closing);
+                        *control_flow = ControlFlow::Exit;
+                    },
+                    _ => {}
+                };
+            },
+            _ => ()
+        }
+    });
 }

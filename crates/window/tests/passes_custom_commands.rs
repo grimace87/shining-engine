@@ -1,7 +1,11 @@
 
 use window::{
-    RenderCycleEvent, RenderEventHandler,
-    WindowEventHandler, WindowStateEvent, Window, MessageProxy, WindowCommand
+    RenderCycleEvent, WindowStateEvent, Window, WindowCommand, WindowEventLooper, MessageProxy,
+    event::{RenderEventHandler, WindowEventHandler}
+};
+use winit::{
+    event::{Event, WindowEvent},
+    event_loop::ControlFlow
 };
 
 #[derive(PartialEq, Debug)]
@@ -43,8 +47,40 @@ impl RenderEventHandler for QuitsQuicklyApp {
 /// Test: intercept window event, and request for the window to exit.
 /// Expected: window opens and then exits very quickly without user interaction.
 fn main() {
-    let window = Window::<TestAppMessage>::new("App Closes");
-    let message_proxy = window.new_message_proxy();
-    let app = QuitsQuicklyApp::new(message_proxy.clone());
-    window.run(app);
+    let looper = WindowEventLooper::<TestAppMessage>::new();
+    let message_proxy = looper.create_proxy();
+    let mut app = QuitsQuicklyApp::new(message_proxy);
+    let window = Window::new("App Closes", &looper);
+    let running_window_id = window.get_window_id();
+    let _code = looper.run_loop(move |event, _, control_flow| {
+        *control_flow = ControlFlow::Wait;
+        match event {
+            Event::UserEvent(command) => {
+                match command {
+                    WindowCommand::RequestClose => {
+                        *control_flow = ControlFlow::Exit
+                    },
+                    WindowCommand::Custom(e) => {
+                        app.on_window_custom_event(e);
+                        ()
+                    },
+                    _ => {}
+                }
+            },
+            Event::WindowEvent { event, window_id }
+            if window_id == running_window_id => {
+                match event {
+                    WindowEvent::CloseRequested => { *control_flow = ControlFlow::Exit; },
+                    WindowEvent::Focused(focused) => {
+                        match focused {
+                            true => app.on_window_state_event(WindowStateEvent::FocusGained),
+                            false => app.on_window_state_event(WindowStateEvent::FocusLost)
+                        };
+                    },
+                    _ => {}
+                }
+            },
+            _ => {}
+        }
+    });
 }

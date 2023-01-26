@@ -138,9 +138,8 @@ impl Scene for EngineTestScene {
 /// Test: send a RequestClose command via the event loop proxy after the window has gained focus.
 /// Expected: window opens and then exits very quickly without issue.
 fn main() {
-    let window = Window::<()>::new("Vulkan Core Test");
-    let message_proxy = window.new_message_proxy();
+    let engine = Engine::<()>::new("Engine Test");
+    let message_proxy = engine.new_message_proxy();
     let app = EngineTestApp::new(message_proxy.clone());
-    let engine = Engine::new();
-    engine.run(window, app);
+    engine.run(app);
 }

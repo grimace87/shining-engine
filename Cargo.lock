@@ -1448,6 +1448,10 @@ dependencies = [
 name = "test-app"
 version = "0.1.0"
 dependencies = [
+ "engine",
+ "model",
+ "resource",
+ "vk-shader-macros",
  "vk_renderer",
  "window",
 ]

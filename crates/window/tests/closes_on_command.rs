@@ -1,42 +1,33 @@
 
-use window::{
-    RenderCycleEvent, RenderEventHandler,
-    WindowEventHandler, WindowStateEvent, Window, WindowCommand
-};
-
-#[derive(PartialEq, Debug)]
-pub enum TestAppMessage {
-    RequestQuit
-}
-
-struct DoesNothingApp {}
-
-impl DoesNothingApp {
-    fn new() -> Self {
-        Self {}
-    }
-}
-
-impl WindowEventHandler<TestAppMessage> for DoesNothingApp {
-    fn on_window_state_event(&mut self, _event: WindowStateEvent) {}
-    fn on_window_custom_event(&mut self, _event: TestAppMessage) {}
-}
-
-impl RenderEventHandler for DoesNothingApp {
-    fn on_render_cycle_event(&self, _event: RenderCycleEvent) {}
-}
+use window::{Window, WindowCommand, WindowEventLooper};
+use winit::{event::{Event, WindowEvent}, event_loop::ControlFlow};
 
 /// Test: send a RequestClose command via the event loop proxy after 1 second.
 /// Expected: window opens and then exits after 1 second without user interaction.
 fn main() {
-    let window = Window::<TestAppMessage>::new("App Does Nothing");
-    let message_proxy = window.new_message_proxy();
-    let app = DoesNothingApp::new();
+    let looper = WindowEventLooper::<()>::new();
+    let message_proxy = looper.create_proxy();
+    let window = Window::new("App Does Nothing", &looper);
     let join_handle = std::thread::spawn(move || {
         std::thread::sleep(std::time::Duration::from_millis(1000));
         message_proxy.send_event(WindowCommand::RequestClose)
             .unwrap();
     });
-    window.run(app);
+    let running_window_id = window.get_window_id();
+    let _code = looper.run_loop(move |event, _, control_flow| {
+        *control_flow = ControlFlow::Wait;
+        match event {
+            Event::WindowEvent { event, window_id }
+            if window_id == running_window_id => {
+                match event {
+                    WindowEvent::CloseRequested => {
+                        *control_flow = ControlFlow::Exit;
+                    },
+                    _ => {}
+                }
+            },
+            _ => {}
+        }
+    });
     join_handle.join().unwrap();
 }
