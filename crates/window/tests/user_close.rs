@@ -1,13 +1,13 @@
 
 use window::{Window, WindowCommand, WindowEventLooper};
-use winit::{event::{Event, WindowEvent}, event_loop::ControlFlow};
+use winit::{event::{Event}, event_loop::ControlFlow};
 
 /// Test: send a RequestClose command via the event loop proxy after 1 second.
 /// Expected: window opens and then exits after 1 second without user interaction.
 fn main() {
     let looper = WindowEventLooper::<()>::new();
     let message_proxy = looper.create_proxy();
-    let window = Window::new("Window Test", &looper);
+    let _window = Window::new("Window Test", &looper);
     let join_handle = std::thread::spawn(move || {
         std::thread::sleep(std::time::Duration::from_millis(1000));
         message_proxy.send_event(WindowCommand::RequestClose)

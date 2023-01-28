@@ -20,7 +20,7 @@ pub enum WindowStateEvent {
 pub enum RenderCycleEvent {
     PrepareUpdate,
     RenderFrame,
-    RecreatingSurface
+    RecreatingSurface(f32) // Aspect ratio passed
 }
 
 pub trait WindowEventHandler<T: 'static> {

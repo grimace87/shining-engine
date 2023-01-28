@@ -13,7 +13,6 @@ pub use scene::{
 };
 
 use internals::EngineInternals;
-use vk_renderer::{VkCore, VkContext, RenderpassWrapper, PipelineWrapper};
 use window::{
     Window, WindowCommand, WindowStateEvent,
     RenderCycleEvent, KeyCode, KeyState, MessageProxy, WindowEventLooper,
@@ -126,10 +125,18 @@ impl<M: 'static + Send + Debug> Engine<M> {
                             };
                             *control_flow = ControlFlow::Exit;
                         },
-                        WindowEvent::Resized(_) => {
-                            app.on_render_cycle_event(RenderCycleEvent::RecreatingSurface);
+                        WindowEvent::Resized(client_area_dimensions) => {
                             if let Some(internals) = &mut self.internals {
-                                internals.recreate_surface().unwrap();
+                                // TODO - this recreates swapchain after first init; is it safe to not init swapchain until this?
+                                let last_known_size = internals.get_last_known_size();
+                                if last_known_size != client_area_dimensions {
+                                    let aspect_ratio = client_area_dimensions.width as f32 /
+                                        client_area_dimensions.height as f32;
+                                    app.on_render_cycle_event(
+                                        RenderCycleEvent::RecreatingSurface(aspect_ratio));
+                                    internals.recreate_surface(&window, client_area_dimensions, &app)
+                                        .unwrap();
+                                }
                             }
                         },
                         _ => {}

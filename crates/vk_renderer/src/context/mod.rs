@@ -211,4 +211,40 @@ impl VkContext {
     pub fn get_mem_allocator(&self) -> (&MemoryAllocator, &Queue) {
         (&self.mem_allocator, &self.transfer_queue)
     }
+
+    pub unsafe fn wait_until_device_idle(&self) -> Result<(), VkError> {
+        self.device.device_wait_idle()
+            .map_err(|e| {
+                VkError::OpFailed(format!("Failed waiting for device: {:?}", e))
+            })?;
+        Ok(())
+    }
+
+    pub unsafe fn regenerate_graphics_command_buffers(
+        &self
+    ) -> Result<Vec<vk::CommandBuffer>, VkError> {
+        self.graphics_queue.regenerate_command_buffers(
+            &self.device,
+            self.swapchain.get_image_count())
+    }
+
+    pub unsafe fn recreate_surface<T>(
+        &mut self,
+        core: &VkCore,
+        window: &T
+    ) -> Result<(), VkError>
+        where T: HasRawDisplayHandle + HasRawWindowHandle
+    {
+        self.destroy_swapchain_resources();
+        self.surface_fn.destroy_surface(self.surface, None);
+        self.surface = ash_window::create_surface(
+            &core.function_loader,
+            &core.instance,
+            window.raw_display_handle(),
+            window.raw_window_handle(),
+            None)
+            .map_err(|e| VkError::OpFailed(format!("Error creating surface: {}", e)))?;
+        self.create_swapchain(core)?;
+        Ok(())
+    }
 }

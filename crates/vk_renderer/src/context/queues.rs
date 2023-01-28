@@ -48,6 +48,29 @@ impl Queue {
         Ok(command_buffer)
     }
 
+    pub unsafe fn regenerate_command_buffers(
+        &self,
+        device: &Device,
+        buffer_count: usize
+    ) -> Result<Vec<vk::CommandBuffer>, VkError> {
+        device
+            .reset_command_pool(
+                self.command_buffer_pool,
+                vk::CommandPoolResetFlags::RELEASE_RESOURCES
+            )
+            .map_err(|e| {
+                VkError::OpFailed(format!("Error resetting command pool: {:?}", e))
+            })?;
+        let command_buffer_allocate_info = vk::CommandBufferAllocateInfo::builder()
+            .command_pool(self.command_buffer_pool)
+            .command_buffer_count(buffer_count as u32);
+        device
+            .allocate_command_buffers(&command_buffer_allocate_info)
+            .map_err(|e| {
+                VkError::OpFailed(format!("Error re-allocating command buffers: {:?}", e))
+            })
+    }
+
     pub unsafe fn submit_command_buffer(
         &self,
         device: &Device,
