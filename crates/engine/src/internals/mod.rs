@@ -1,5 +1,5 @@
 
-use crate::{SceneFactory, Renderable};
+use crate::{SceneFactory, Renderable, StockTimer, Timer};
 use vk_renderer::{VkError, VkCore, VkContext, RenderpassWrapper, PipelineWrapper};
 use window::{Window, PhysicalSize, event::{RenderEventHandler, WindowEventHandler}};
 use resource::{ResourceManager, RawResourceBearer};
@@ -7,6 +7,7 @@ use std::cell::RefCell;
 use std::fmt::Debug;
 
 pub struct EngineInternals {
+    timer: StockTimer,
     last_known_client_area_size: PhysicalSize<u32>,
     render_core: RefCell<VkCore>,
     render_context: RefCell<VkContext>,
@@ -45,6 +46,7 @@ impl EngineInternals {
 
         // Initialisation
         Ok(Self {
+            timer: StockTimer::new(),
             last_known_client_area_size: PhysicalSize::default(),
             render_core: RefCell::new(core),
             render_context: RefCell::new(context),
@@ -66,6 +68,10 @@ impl EngineInternals {
         // Destroy renderer
         self.render_context.borrow_mut().teardown();
         self.render_core.borrow_mut().teardown();
+    }
+
+    pub fn pull_time_step_millis(&mut self) -> u64 {
+        self.timer.pull_time_step_millis()
     }
 
     unsafe fn create_pipelines(

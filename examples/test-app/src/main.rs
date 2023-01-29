@@ -134,7 +134,7 @@ impl RenderEventHandler for QuitsQuicklyApp {
 
     fn on_render_cycle_event(&self, event: RenderCycleEvent) {
         match event {
-            RenderCycleEvent::PrepareUpdate => {
+            RenderCycleEvent::PrepareUpdate(_) => {
                 self.message_proxy.send_event(WindowCommand::RequestRedraw)
                     .unwrap();
             },

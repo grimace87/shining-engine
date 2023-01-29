@@ -1,6 +1,7 @@
 mod internals;
 mod renderable;
 mod scene;
+mod timer;
 
 pub use renderable::{
     Renderable,
@@ -11,6 +12,7 @@ pub use scene::{
     Scene, SceneFactory,
     stock::{StockScene, StockSceneFactory}
 };
+pub use timer::{Timer, stock::StockTimer};
 
 use internals::EngineInternals;
 use window::{
@@ -143,7 +145,13 @@ impl<M: 'static + Send + Debug> Engine<M> {
                     };
                 },
                 Event::MainEventsCleared => {
-                    app.on_render_cycle_event(RenderCycleEvent::PrepareUpdate);
+                    if let Some(internals) = &mut self.internals {
+                        // TODO: v-sync?
+                        let time_passed_millis = internals.pull_time_step_millis();
+                        app.on_render_cycle_event(
+                            RenderCycleEvent::PrepareUpdate(time_passed_millis));
+                        window.request_redraw();
+                    }
                 },
                 Event::RedrawRequested(_) => {
                     app.on_render_cycle_event(RenderCycleEvent::RenderFrame);

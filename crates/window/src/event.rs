@@ -18,7 +18,7 @@ pub enum WindowStateEvent {
 
 #[derive(PartialEq)]
 pub enum RenderCycleEvent {
-    PrepareUpdate,
+    PrepareUpdate(u64),
     RenderFrame,
     RecreatingSurface(f32) // Aspect ratio passed
 }
