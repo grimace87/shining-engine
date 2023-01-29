@@ -132,7 +132,7 @@ impl ManagesMemoryTransfers for MemoryAllocator {
             .map_err(|e| {
                 VkError::OpFailed(format!("Error creating fence: {:?}", e))
             })?;
-        transfer_queue.submit_command_buffer(
+        transfer_queue.submit_transfer_command_buffer(
             &self.device,
             &self.transfer_command_buffer,
             &fence)?;
@@ -201,7 +201,7 @@ impl ManagesMemoryTransfers for MemoryAllocator {
             .map_err(|e| {
                 VkError::OpFailed(format!("Error creating fence: {:?}", e))
             })?;
-        transfer_queue.submit_command_buffer(
+        transfer_queue.submit_transfer_command_buffer(
             &self.device,
             &self.transfer_command_buffer,
             &fence)?;
@@ -313,7 +313,7 @@ impl ManagesMemoryTransfers for MemoryAllocator {
             .map_err(|e| {
                 VkError::OpFailed(format!("Error creating fence: {:?}", e))
             })?;
-        transfer_queue.submit_command_buffer(
+        transfer_queue.submit_transfer_command_buffer(
             &self.device,
             &self.transfer_command_buffer,
             &fence)?;
@@ -452,7 +452,7 @@ impl ManagesMemoryTransfers for MemoryAllocator {
             .map_err(|e| {
                 VkError::OpFailed(format!("Error creating fence: {:?}", e))
             })?;
-        transfer_queue.submit_command_buffer(
+        transfer_queue.submit_transfer_command_buffer(
             &self.device,
             &self.transfer_command_buffer,
             &fence)?;

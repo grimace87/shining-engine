@@ -51,6 +51,18 @@ impl PipelineWrapper {
         }
     }
 
+    pub fn get_pipeline(&self) -> vk::Pipeline {
+        self.pipeline
+    }
+
+    pub fn get_layout(&self) -> vk::PipelineLayout {
+        self.pipeline_layout
+    }
+
+    pub fn get_descriptor_set(&self) -> vk::DescriptorSet {
+        self.descriptor_set
+    }
+
     /// Create resources needed to render a single step within a pass
     pub unsafe fn create_resources(
         &mut self,

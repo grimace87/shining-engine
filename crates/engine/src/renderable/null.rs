@@ -2,7 +2,7 @@ use crate::Renderable;
 
 use resource::ResourceManager;
 use vk_renderer::{VkContext, VkError, RenderpassWrapper, PipelineWrapper};
-use ash::vk;
+use ash::{Device, vk};
 
 /// TODO - Replace this type with derived implementations of Renderable using macros or some such.
 /// For now, this implementation will assume a basic rendering style that draws a textured model
@@ -48,13 +48,25 @@ impl Renderable for NullRenderable {
         Ok((renderpass, pipeline))
     }
 
-    fn record_commands(
+    unsafe fn record_commands(
         &self,
-        command_buffer: vk::CommandBuffer,
-        resource_manager: &ResourceManager<VkContext>
-    ) {
-
+        _device: &Device,
+        _command_buffer: vk::CommandBuffer,
+        _render_extent: vk::Extent2D,
+        _resource_manager: &ResourceManager<VkContext>,
+        _renderpass: &RenderpassWrapper,
+        _pipeline: &PipelineWrapper
+    ) -> Result<(), VkError> {
+        Ok(())
     }
 
     fn update(&mut self, _time_step_seconds: f64) {}
+
+    unsafe fn prepare_frame_render(
+        &self,
+        _swapchain_image_index: usize,
+        _resource_manager: &ResourceManager<VkContext>
+    ) -> Result<(), VkError> {
+        Ok(())
+    }
 }

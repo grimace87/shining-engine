@@ -36,6 +36,10 @@ impl Queue {
         })
     }
 
+    pub fn get_queue(&self) -> vk::Queue {
+        self.queue
+    }
+
     pub unsafe fn allocate_command_buffer(&self, device: &Device) -> Result<vk::CommandBuffer, VkError> {
         let command_buffer_alloc_info = vk::CommandBufferAllocateInfo::builder()
             .command_pool(self.command_buffer_pool)
@@ -71,7 +75,7 @@ impl Queue {
             })
     }
 
-    pub unsafe fn submit_command_buffer(
+    pub unsafe fn submit_transfer_command_buffer(
         &self,
         device: &Device,
         command_buffer: &vk::CommandBuffer,
@@ -86,6 +90,35 @@ impl Queue {
             .queue_submit(self.queue, &submit_infos, fence.clone())
             .map_err(|e| {
                 VkError::OpFailed(format!("Error submitting to queue: {:?}", e))
+            })?;
+        Ok(())
+    }
+
+    pub unsafe fn submit_graphics_command_buffer(
+        &self,
+        device: &Device,
+        command_buffer: vk::CommandBuffer,
+        sync_image_available: vk::Semaphore,
+        sync_may_begin_rendering: vk::Fence,
+        sync_rendering_finished: vk::Semaphore
+    ) -> Result<(), VkError> {
+        let semaphores_available = [sync_image_available];
+        let waiting_stages = [vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT];
+        let semaphores_finished = [sync_rendering_finished];
+        let command_buffers = [command_buffer];
+        let submit_info = [vk::SubmitInfo::builder()
+            .wait_semaphores(&semaphores_available)
+            .wait_dst_stage_mask(&waiting_stages)
+            .command_buffers(&command_buffers)
+            .signal_semaphores(&semaphores_finished)
+            .build()];
+        device.queue_submit(
+            self.queue,
+            &submit_info,
+            sync_may_begin_rendering
+        )
+            .map_err(|e| {
+                VkError::OpFailed(format!("Queue submit error: {:?}", e))
             })?;
         Ok(())
     }

@@ -102,6 +102,10 @@ impl SwapchainWrapper {
         }
     }
 
+    pub fn get_swapchain(&self) -> vk::SwapchainKHR {
+        self.swapchain
+    }
+
     /// Create a swapchain; ensures that it is supported by the device and surface
     unsafe fn create_swapchain(
         core: &VkCore,

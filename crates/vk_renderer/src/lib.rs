@@ -7,6 +7,7 @@ mod pipeline;
 pub use crate::core::VkCore;
 pub use crate::core::FeatureDeclaration;
 pub use context::VkContext;
+pub use context::PresentResult;
 pub use context::Queue;
 pub use crate::resource::util::TextureCodec;
 pub use crate::resource::buffer::BufferWrapper;

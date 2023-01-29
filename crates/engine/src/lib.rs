@@ -22,6 +22,7 @@ use window::{
     event::{RenderEventHandler, WindowEventHandler}
 };
 use resource::RawResourceBearer;
+use vk_renderer::PresentResult;
 use std::fmt::Debug;
 
 pub struct Engine<M: 'static + Send + Debug> {
@@ -154,7 +155,30 @@ impl<M: 'static + Send + Debug> Engine<M> {
                     }
                 },
                 Event::RedrawRequested(_) => {
-                    app.on_render_cycle_event(RenderCycleEvent::RenderFrame);
+                    app.on_render_cycle_event(RenderCycleEvent::RenderingFrame);
+                    if let Some(internals) = &mut self.internals {
+                        match internals.render_frame(&app) {
+                            Ok(PresentResult::Ok) => {},
+                            Ok(PresentResult::SwapchainOutOfDate) => {
+                                if let Some(internals) = &mut self.internals {
+                                    let last_known_size = internals.get_last_known_size();
+                                    let aspect_ratio = last_known_size.width as f32 /
+                                        last_known_size.height as f32;
+                                    app.on_render_cycle_event(
+                                        RenderCycleEvent::RecreatingSurface(aspect_ratio));
+                                    internals.recreate_surface(&window, last_known_size, &app)
+                                        .unwrap();
+                                }
+                            },
+                            Err(e) => {
+                                println!("Rendering error: {:?}", e);
+                                if let Some(internals) = &mut self.internals {
+                                    internals.engine_teardown();
+                                };
+                                *control_flow = ControlFlow::Exit
+                            }
+                        }
+                    }
                 },
                 _ => ()
             }

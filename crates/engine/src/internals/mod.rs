@@ -1,6 +1,6 @@
 
 use crate::{SceneFactory, Renderable, StockTimer, Timer};
-use vk_renderer::{VkError, VkCore, VkContext, RenderpassWrapper, PipelineWrapper};
+use vk_renderer::{VkError, VkCore, VkContext, RenderpassWrapper, PipelineWrapper, PresentResult};
 use window::{Window, PhysicalSize, event::{RenderEventHandler, WindowEventHandler}};
 use resource::{ResourceManager, RawResourceBearer};
 use std::cell::RefCell;
@@ -37,11 +37,18 @@ impl EngineInternals {
         let mut pipelines = vec![];
         unsafe {
             let new_pipelines = Self::create_pipelines(&context, &resource_manager, &renderable).unwrap();
-            for (renderpass, pipeline) in new_pipelines.into_iter() {
+            for (image_index, (renderpass, pipeline)) in new_pipelines.into_iter().enumerate() {
+                let command_buffer = context.get_graphics_command_buffer(image_index);
+                renderable.record_commands(
+                    &context.device,
+                    command_buffer,
+                    context.get_extent()?,
+                    &resource_manager,
+                    &renderpass,
+                    &pipeline)?;
                 renderpasses.push(renderpass);
                 pipelines.push(pipeline);
             }
-            // TODO - record command buffers
         };
 
         // Initialisation
@@ -141,13 +148,39 @@ impl EngineInternals {
             context.recreate_surface(&core, window)?;
             context.regenerate_graphics_command_buffers()?;
             let new_pipelines = Self::create_pipelines(&context, &resource_manager, &renderable).unwrap();
-            for (renderpass, pipeline) in new_pipelines.into_iter() {
+            for (image_index, (renderpass, pipeline)) in new_pipelines.into_iter().enumerate() {
+                let command_buffer = context.get_graphics_command_buffer(image_index);
+                renderable.record_commands(
+                    &context.device,
+                    command_buffer,
+                    context.get_extent()?,
+                    &resource_manager,
+                    &renderpass,
+                    &pipeline)?;
                 renderpasses.push(renderpass);
                 pipelines.push(pipeline);
             }
-            // TODO - record command buffers
         }
         self.last_known_client_area_size = new_client_area_size;
         Ok(())
+    }
+
+    pub fn render_frame<M, A>(&mut self, app: &A) -> Result<PresentResult, VkError> where
+        M: 'static + Send + Debug,
+        A: 'static + WindowEventHandler<M> + RenderEventHandler + RawResourceBearer + SceneFactory
+    {
+        let mut context = self.render_context.borrow_mut();
+        let resource_manager = self.resource_manager.borrow();
+        unsafe {
+            let (image_index, up_to_date) = context.acquire_next_image()?;
+            if !up_to_date {
+                return Ok(PresentResult::SwapchainOutOfDate);
+            }
+
+            let scene = app.get_scene();
+            let renderable = scene.get_renderable();
+            renderable.prepare_frame_render(image_index, &resource_manager)?;
+            context.submit_and_present()
+        }
     }
 }
