@@ -1,8 +1,7 @@
 use crate::Renderable;
 
-use model::StaticVertex;
-use resource::ResourceManager;
-use vk_renderer::{VkContext, VkError, RenderpassWrapper, PipelineWrapper};
+use resource::{ResourceManager, RenderpassCreationData, RenderpassTarget, PipelineCreationData};
+use vk_renderer::{VkContext, VkError};
 use ash::{Device, vk};
 use cgmath::{Matrix4, SquareMatrix, Rad};
 
@@ -34,37 +33,6 @@ impl StockRenderable {
 
 impl Renderable for StockRenderable {
 
-    fn make_pipeline(
-        &self,
-        context: &VkContext,
-        resource_manager: &ResourceManager<VkContext>,
-        swapchain_image_index: usize
-    ) -> Result<(RenderpassWrapper, PipelineWrapper), VkError> {
-        let render_extent = context.get_extent()?;
-        let renderpass = RenderpassWrapper::new_with_swapchain_target(
-            context,
-            swapchain_image_index)?;
-        let mut pipeline = PipelineWrapper::new();
-        unsafe {
-            pipeline.create_resources(
-                context,
-                resource_manager,
-                &renderpass,
-                0,
-                1,
-                0,
-                std::mem::size_of::<StaticVertex>() as u32,
-                std::mem::size_of::<CameraUbo>(),
-                vk::ShaderStageFlags::VERTEX,
-                false,
-                0,
-                false,
-                render_extent
-            )?;
-        }
-        Ok((renderpass, pipeline))
-    }
-
     /// Stock rendering operation renders directly to the swapchain framebuffer
     /// TODO - Fetch renderpass, framebuffer from the resource manager. Evidently we also need the pipeline, the pipeline layout, and the descriptor set.
     unsafe fn record_commands(
@@ -73,9 +41,37 @@ impl Renderable for StockRenderable {
         command_buffer: vk::CommandBuffer,
         render_extent: vk::Extent2D,
         resource_manager: &ResourceManager<VkContext>,
-        renderpass: &RenderpassWrapper,
-        pipeline: &PipelineWrapper
+        swapchain_image_index: usize
     ) -> Result<(), VkError> {
+
+        // Query correct renderpass
+        let renderpass_definition = RenderpassCreationData {
+            target: RenderpassTarget::SwapchainImageWithDepth,
+            swapchain_image_index
+        };
+        let complex_id = renderpass_definition.encode_complex_renderpass_id(
+            0,
+            render_extent.width,
+            render_extent.height);
+        let renderpass = resource_manager
+            .get_renderpass_handle(complex_id)?;
+
+        // Query correct pipeline and layout
+        let pipeline_definition = PipelineCreationData {
+            pipeline_layout_index: 0,
+            renderpass_index: 0,
+            descriptor_set_layout_id: 0,
+            vertex_shader_index: 0,
+            fragment_shader_index: 0,
+            vbo_index: 0,
+            texture_index: 0,
+            vbo_stride_bytes: 0,
+            ubo_size_bytes: 0,
+            swapchain_image_index
+        };
+        let complex_id = pipeline_definition.encode_complex_pipeline_id(0);
+        let pipeline = resource_manager.get_pipeline_handle(complex_id)?;
+        let pipeline_layout = resource_manager.get_pipeline_layout_handle(0)?;
 
         // Begin recording
         let begin_info = vk::CommandBufferBeginInfo::builder();
@@ -86,7 +82,7 @@ impl Renderable for StockRenderable {
         let clear_values = [
             vk::ClearValue {
                 color: vk::ClearColorValue {
-                    float32: [0.0, 0.0, 0.0, 1.0]
+                    float32: [0.0, 0.3, 0.0, 1.0]
                 }
             },
             vk::ClearValue {
@@ -121,7 +117,7 @@ impl Renderable for StockRenderable {
         device.cmd_bind_descriptor_sets(
             command_buffer,
             vk::PipelineBindPoint::GRAPHICS,
-            pipeline.get_layout(),
+            *pipeline_layout,
             0,
             &[pipeline.get_descriptor_set()],
             &[]);

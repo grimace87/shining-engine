@@ -1,5 +1,5 @@
 
-use crate::{VkContext, VkError, BufferWrapper, RenderpassWrapper};
+use crate::{VkContext, VkError, BufferWrapper};
 use resource::{ResourceManager, BufferUsage};
 use ash::vk;
 use std::ffi::CString;
@@ -13,10 +13,8 @@ pub struct PipelineWrapper {
     uniform_buffer: BufferWrapper,
     texture_image_view: vk::ImageView, // TODO - Vec
     sampler: vk::Sampler, // TODO - Vec
-    descriptor_set_layout: vk::DescriptorSetLayout,
     descriptor_pool: vk::DescriptorPool,
     descriptor_set: vk::DescriptorSet,
-    pipeline_layout: vk::PipelineLayout,
     pipeline: vk::Pipeline
 }
 
@@ -30,10 +28,8 @@ impl PipelineWrapper {
             uniform_buffer: BufferWrapper::empty(),
             texture_image_view: vk::ImageView::null(),
             sampler: vk::Sampler::null(),
-            descriptor_set_layout: vk::DescriptorSetLayout::null(),
             descriptor_pool: vk::DescriptorPool::null(),
             descriptor_set: vk::DescriptorSet::null(),
-            pipeline_layout: vk::PipelineLayout::null(),
             pipeline: vk::Pipeline::null()
         }
     }
@@ -43,20 +39,14 @@ impl PipelineWrapper {
         let (allocator, _) = context.get_mem_allocator();
         unsafe {
             context.device.destroy_pipeline(self.pipeline, None);
-            context.device.destroy_pipeline_layout(self.pipeline_layout, None);
             self.uniform_buffer.destroy(allocator).unwrap();
             context.device.destroy_descriptor_pool(self.descriptor_pool, None);
-            context.device.destroy_descriptor_set_layout(self.descriptor_set_layout, None);
             context.device.destroy_sampler(self.sampler, None);
         }
     }
 
     pub fn get_pipeline(&self) -> vk::Pipeline {
         self.pipeline
-    }
-
-    pub fn get_layout(&self) -> vk::PipelineLayout {
-        self.pipeline_layout
     }
 
     pub fn get_descriptor_set(&self) -> vk::DescriptorSet {
@@ -68,20 +58,29 @@ impl PipelineWrapper {
         &mut self,
         context: &VkContext,
         resource_manager: &ResourceManager<VkContext>,
-        renderpass_wrapper: &RenderpassWrapper,
+        complex_renderpass_id: u64,
+        descriptor_set_layout_id: u32,
+        pipeline_layout_index: u32,
         vertex_shader_index: u32,
         fragment_shader_index: u32,
         vbo_index: u32,
         vbo_stride_bytes: u32,
         ubo_size_bytes: usize,
-        ubo_stage_flags: vk::ShaderStageFlags,
         draw_indexed: bool,
         texture_index: u32,
         depth_test: bool,
         render_extent: vk::Extent2D
     ) -> Result<(), VkError> {
 
-        // Query shader modeuls
+        // Query renderpass and pipeline layout
+        let renderpass_wrapper = resource_manager
+            .get_renderpass_handle(complex_renderpass_id)?;
+        let descriptor_set_layout = resource_manager
+            .get_descriptor_set_layout_handle(descriptor_set_layout_id)?;
+        let pipeline_layout = resource_manager
+            .get_pipeline_layout_handle(pipeline_layout_index)?;
+
+        // Query shader modules
         let vertex_shader_module = resource_manager
             .get_shader_handle(vertex_shader_index as u32)?;
         let fragment_shader_module = resource_manager
@@ -166,29 +165,6 @@ impl PipelineWrapper {
                 .map_err(|e| VkError::OpFailed(format!("Error creating sampler: {:?}", e)))?;
 
         // All the stuff around descriptors
-        let descriptor_set_layout_binding_infos: Vec<vk::DescriptorSetLayoutBinding> = {
-            let mut bindings = vec![vk::DescriptorSetLayoutBinding::builder()
-                .binding(0)
-                .descriptor_type(vk::DescriptorType::UNIFORM_BUFFER)
-                .descriptor_count(1)
-                .stage_flags(ubo_stage_flags)
-                .build()];
-            //TODO - for index in 0..texture_image_views.len() { with binding 1 + index
-            bindings.push(vk::DescriptorSetLayoutBinding::builder()
-                .binding(1)
-                .descriptor_type(vk::DescriptorType::COMBINED_IMAGE_SAMPLER)
-                .descriptor_count(1)
-                .stage_flags(vk::ShaderStageFlags::FRAGMENT)
-                .build());
-            bindings
-        };
-        let descriptor_set_layout_info = vk::DescriptorSetLayoutCreateInfo::builder()
-            .bindings(descriptor_set_layout_binding_infos.as_slice());
-        let descriptor_set_layout = context.device
-            .create_descriptor_set_layout(&descriptor_set_layout_info, None)
-            .map_err(|e|
-                VkError::OpFailed(format!("Error creating descriptor set layout: {:?}", e))
-            )?;
         let pool_sizes = [
             vk::DescriptorPoolSize {
                 ty: vk::DescriptorType::UNIFORM_BUFFER,
@@ -207,7 +183,7 @@ impl PipelineWrapper {
             .map_err(|e|
                 VkError::OpFailed(format!("Error creating descriptor pool: {:?}", e))
             )?;
-        let descriptor_layouts = vec![descriptor_set_layout];
+        let descriptor_layouts = vec![*descriptor_set_layout];
         let descriptor_set_alloc_info = vk::DescriptorSetAllocateInfo::builder()
             .descriptor_pool(descriptor_pool)
             .set_layouts(&descriptor_layouts);
@@ -293,12 +269,6 @@ impl PipelineWrapper {
         ];
         let colour_blend_info = vk::PipelineColorBlendStateCreateInfo::builder()
             .attachments(&colour_blend_attachments);
-        let pipeline_descriptor_layouts = [descriptor_set_layout];
-        let pipeline_layout_info = vk::PipelineLayoutCreateInfo::builder()
-            .set_layouts(&pipeline_descriptor_layouts);
-        let pipeline_layout = context.device
-            .create_pipeline_layout(&pipeline_layout_info, None)
-            .map_err(|e| VkError::OpFailed(format!("{:?}", e)))?;
 
         // Make pipeline
         let pipeline_create_info = vk::GraphicsPipelineCreateInfo::builder()
@@ -310,7 +280,7 @@ impl PipelineWrapper {
             .multisample_state(&multisampler_info)
             .depth_stencil_state(&depth_stencil_info)
             .color_blend_state(&colour_blend_info)
-            .layout(pipeline_layout)
+            .layout(*pipeline_layout)
             .render_pass(renderpass_wrapper.renderpass)
             .subpass(0);
         let graphics_pipeline = context.device
@@ -327,10 +297,8 @@ impl PipelineWrapper {
         self.uniform_buffer = uniform_buffer;
         self.texture_image_view = texture_image_view; // TODO - Vec
         self.sampler = sampler; // TODO - Vec
-        self.descriptor_set_layout = descriptor_set_layout;
         self.descriptor_pool = descriptor_pool;
         self.descriptor_set = descriptor_set;
-        self.pipeline_layout = pipeline_layout;
         self.pipeline = graphics_pipeline[0];
 
         Ok(())
@@ -341,7 +309,8 @@ impl PipelineWrapper {
     pub unsafe fn record_commands(
         &self,
         command_buffer: vk::CommandBuffer,
-        context: &VkContext
+        context: &VkContext,
+        pipeline_layout: vk::PipelineLayout
     ) {
         context.device.cmd_bind_pipeline(
             command_buffer,
@@ -355,7 +324,7 @@ impl PipelineWrapper {
         context.device.cmd_bind_descriptor_sets(
             command_buffer,
             vk::PipelineBindPoint::GRAPHICS,
-            self.pipeline_layout,
+            pipeline_layout,
             0,
             &[self.descriptor_set],
             &[]);

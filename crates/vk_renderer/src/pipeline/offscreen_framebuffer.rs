@@ -53,7 +53,7 @@ impl OffscreenFramebufferWrapper {
         })
     }
 
-    pub unsafe fn destroy(&mut self, context: &VkContext) -> Result<(), VkError> {
+    pub unsafe fn destroy(&self, context: &VkContext) -> Result<(), VkError> {
         let (allocator, _) = context.get_mem_allocator();
         self.color_texture.destroy(&context.device, &allocator)?;
         if let Some(depth_image) = &self.depth_texture {

@@ -1,6 +1,6 @@
 
 use crate::{SceneFactory, Renderable, StockTimer, Timer};
-use vk_renderer::{VkError, VkCore, VkContext, RenderpassWrapper, PipelineWrapper, PresentResult};
+use vk_renderer::{VkError, VkCore, VkContext, PresentResult};
 use window::{Window, PhysicalSize, event::{RenderEventHandler, WindowEventHandler}};
 use resource::{ResourceManager, RawResourceBearer};
 use std::cell::RefCell;
@@ -11,9 +11,7 @@ pub struct EngineInternals {
     last_known_client_area_size: PhysicalSize<u32>,
     render_core: RefCell<VkCore>,
     render_context: RefCell<VkContext>,
-    resource_manager: RefCell<ResourceManager<VkContext>>,
-    renderpasses: RefCell<Vec<RenderpassWrapper>>,
-    pipelines: RefCell<Vec<PipelineWrapper>>
+    resource_manager: RefCell<ResourceManager<VkContext>>
 }
 
 impl EngineInternals {
@@ -28,28 +26,16 @@ impl EngineInternals {
         let mut resource_manager = ResourceManager::new();
 
         // Load needed resources
-        resource_manager.load_resources_from(&context, app).unwrap();
-
-        // Create the pipelines
-        let scene = app.get_scene();
-        let renderable = scene.get_renderable();
-        let mut renderpasses = vec![];
-        let mut pipelines = vec![];
-        unsafe {
-            let new_pipelines = Self::create_pipelines(&context, &resource_manager, &renderable).unwrap();
-            for (image_index, (renderpass, pipeline)) in new_pipelines.into_iter().enumerate() {
-                let command_buffer = context.get_graphics_command_buffer(image_index);
-                renderable.record_commands(
-                    &context.device,
-                    command_buffer,
-                    context.get_extent()?,
-                    &resource_manager,
-                    &renderpass,
-                    &pipeline)?;
-                renderpasses.push(renderpass);
-                pipelines.push(pipeline);
-            }
-        };
+        let current_extent = context.get_extent()?;
+        resource_manager.load_static_resources_from(&context, app).unwrap();
+        resource_manager
+            .load_dynamic_resources_from(
+                &context,
+                app,
+                context.get_swapchain_image_count(),
+                current_extent.width,
+                current_extent.height)
+            .unwrap();
 
         // Initialisation
         Ok(Self {
@@ -57,16 +43,20 @@ impl EngineInternals {
             last_known_client_area_size: PhysicalSize::default(),
             render_core: RefCell::new(core),
             render_context: RefCell::new(context),
-            resource_manager: RefCell::new(resource_manager),
-            renderpasses: RefCell::new(renderpasses),
-            pipelines: RefCell::new(pipelines)
+            resource_manager: RefCell::new(resource_manager)
         })
     }
 
     pub fn engine_teardown(&mut self) {
 
-        // Release resources
-        self.destroy_pipelines();
+        unsafe {
+            self.render_context.borrow().wait_until_device_idle().unwrap();
+        }
+
+        // Free resources that the resource manager depends on
+        // Note buffers and things should only be destroyed after command buffers that reference
+        // them have been destroyed or reset
+        self.render_context.borrow_mut().release_command_buffers().unwrap();
 
         // Free resources
         self.resource_manager.borrow_mut()
@@ -77,40 +67,28 @@ impl EngineInternals {
         self.render_core.borrow_mut().teardown();
     }
 
+    pub fn record_graphics_commands(
+        &self,
+        renderable: &Box<dyn Renderable>
+    ) -> Result<(), VkError> {
+        let context = self.render_context.borrow();
+        let resource_manager = self.resource_manager.borrow();
+        for image_index in 0..context.get_swapchain_image_count() {
+            let command_buffer = context.get_graphics_command_buffer(image_index);
+            unsafe {
+                renderable.record_commands(
+                    &context.device,
+                    command_buffer,
+                    context.get_extent()?,
+                    &resource_manager,
+                    image_index)?;
+            }
+        }
+        Ok(())
+    }
+
     pub fn pull_time_step_millis(&mut self) -> u64 {
         self.timer.pull_time_step_millis()
-    }
-
-    unsafe fn create_pipelines(
-        context: &VkContext,
-        resource_manager: &ResourceManager<VkContext>,
-        renderable: &Box<dyn Renderable>
-    ) -> Result<Vec<(RenderpassWrapper, PipelineWrapper)>, VkError> {
-        let swapchain_size = context.get_swapchain_image_count();
-        let mut pipeline_set = Vec::new();
-        for image_index in 0..swapchain_size {
-            let (renderpass, pipeline) = renderable.make_pipeline(
-                context,
-                resource_manager,
-                image_index)?;
-            pipeline_set.push((renderpass, pipeline));
-        }
-        Ok(pipeline_set)
-    }
-
-    fn destroy_pipelines(&self) {
-
-        let mut pipelines = self.pipelines.borrow_mut();
-        for pipeline in pipelines.iter_mut() {
-            pipeline.destroy_resources(&self.render_context.borrow());
-        }
-        pipelines.clear();
-
-        let mut renderpasses = self.renderpasses.borrow_mut();
-        for renderpass in renderpasses.iter_mut() {
-            renderpass.destroy_resources(&self.render_context.borrow())
-        }
-        renderpasses.clear();
     }
 
     pub fn get_last_known_size(&self) -> PhysicalSize<u32> {
@@ -131,36 +109,28 @@ impl EngineInternals {
             self.render_context.borrow().wait_until_device_idle()?;
         }
 
-        // Tear down invalidated resources
-        self.destroy_pipelines();
-
         // Get needed things
         let core = self.render_core.borrow();
-        let mut context = self.render_context.borrow_mut();
-        let resource_manager = self.resource_manager.borrow();
-        let mut renderpasses = self.renderpasses.borrow_mut();
-        let mut pipelines = self.pipelines.borrow_mut();
         let scene = app.get_scene();
         let renderable = scene.get_renderable();
 
         // Recreate everything
         unsafe {
+            let mut context = self.render_context.borrow_mut();
+            let mut resource_manager = self.resource_manager.borrow_mut();
+            let current_extent = context.get_extent()?;
             context.recreate_surface(&core, window)?;
             context.regenerate_graphics_command_buffers()?;
-            let new_pipelines = Self::create_pipelines(&context, &resource_manager, &renderable).unwrap();
-            for (image_index, (renderpass, pipeline)) in new_pipelines.into_iter().enumerate() {
-                let command_buffer = context.get_graphics_command_buffer(image_index);
-                renderable.record_commands(
-                    &context.device,
-                    command_buffer,
-                    context.get_extent()?,
-                    &resource_manager,
-                    &renderpass,
-                    &pipeline)?;
-                renderpasses.push(renderpass);
-                pipelines.push(pipeline);
-            }
+            resource_manager.release_swapchain_dynamic_resources(&mut context)?;
+            resource_manager
+                .load_dynamic_resources_from(
+                    &context,
+                    app,
+                    context.get_swapchain_image_count(),
+                    current_extent.width,
+                    current_extent.height)?;
         }
+        self.record_graphics_commands(&renderable)?;
         self.last_known_client_area_size = new_client_area_size;
         Ok(())
     }

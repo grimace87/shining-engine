@@ -10,10 +10,12 @@ use vk_renderer::{TextureCodec, util::decode_texture};
 use window::{
     RenderCycleEvent, RenderEventHandler, WindowEventHandler, WindowStateEvent, WindowCommand
 };
-use model::{COLLADA, Config};
+use model::{COLLADA, Config, StaticVertex};
 use resource::{
     BufferUsage, ImageUsage, VboCreationData, TextureCreationData, RawResourceBearer,
-    ShaderCreationData, ShaderStage
+    ShaderCreationData, ShaderStage, RenderpassCreationData,
+    DescriptorSetLayoutCreationData, PipelineLayoutCreationData, PipelineCreationData,
+    RenderpassTarget, UboUsage, OffscreenFramebufferData
 };
 use vk_shader_macros::include_glsl;
 
@@ -31,6 +33,20 @@ const VERTEX_SHADER: &[u32] = include_glsl!("../../resources/test/shaders/simple
 const SHADER_INDEX_FRAGMENT: u32 = 1;
 const FRAGMENT_SHADER: &[u32] = include_glsl!("../../resources/test/shaders/simple.frag");
 
+const RENDERPASS_INDEX_MAIN: u32 = 0;
+
+const DESCRIPTOR_SET_LAYOUT_INDEX_MAIN: u32 = 0;
+
+const PIPELINE_LAYOUT_INDEX_MAIN: u32 = 0;
+
+const PIPELINE_INDEX_MAIN: u32 = 0;
+
+#[repr(C)]
+struct SomeUniformBuffer {
+    pub x: f32,
+    pub y: f32
+}
+
 struct EngineTestApp {}
 
 impl RawResourceBearer for EngineTestApp {
@@ -45,6 +61,26 @@ impl RawResourceBearer for EngineTestApp {
 
     fn get_shader_resource_ids(&self) -> &[u32] {
         &[SHADER_INDEX_VERTEX, SHADER_INDEX_FRAGMENT]
+    }
+
+    fn get_offscreen_framebuffer_resource_ids(&self) -> &[u32] {
+        &[]
+    }
+
+    fn get_renderpass_resource_ids(&self) -> &[u32] {
+        &[RENDERPASS_INDEX_MAIN]
+    }
+
+    fn get_descriptor_set_layout_resource_ids(&self) -> &[u32] {
+        &[DESCRIPTOR_SET_LAYOUT_INDEX_MAIN]
+    }
+
+    fn get_pipeline_layout_resource_ids(&self) -> &[u32] {
+        &[PIPELINE_LAYOUT_INDEX_MAIN]
+    }
+
+    fn get_pipeline_resource_ids(&self) -> &[u32] {
+        &[PIPELINE_INDEX_MAIN]
     }
 
     fn get_raw_model_data(&self, id: u32) -> VboCreationData {
@@ -88,6 +124,64 @@ impl RawResourceBearer for EngineTestApp {
                 stage: ShaderStage::Fragment
             },
             _ => panic!("Bad texture resource ID")
+        }
+    }
+
+    fn get_raw_offscreen_framebuffer_data(&self, _id: u32) -> OffscreenFramebufferData {
+        panic!("Bad offscreen framebuffer resource ID");
+    }
+
+    fn get_raw_renderpass_data(
+        &self,
+        id: u32,
+        swapchain_image_index: usize
+    ) -> RenderpassCreationData {
+        if id != RENDERPASS_INDEX_MAIN {
+            panic!("Bad renderpass resource ID");
+        }
+        RenderpassCreationData {
+            target: RenderpassTarget::SwapchainImageWithDepth,
+            swapchain_image_index
+        }
+    }
+
+    fn get_raw_descriptor_set_layout_data(&self, id: u32) -> DescriptorSetLayoutCreationData {
+        if id != DESCRIPTOR_SET_LAYOUT_INDEX_MAIN {
+            panic!("Bad descriptor set layout resource ID");
+        }
+        DescriptorSetLayoutCreationData {
+            ubo_usage: UboUsage::VertexShaderRead
+        }
+    }
+
+    fn get_raw_pipeline_layout_data(&self, id: u32) -> PipelineLayoutCreationData {
+        if id != PIPELINE_LAYOUT_INDEX_MAIN {
+            panic!("Bad pipeline layout resource ID");
+        }
+        PipelineLayoutCreationData {
+            descriptor_set_layout_index: DESCRIPTOR_SET_LAYOUT_INDEX_MAIN
+        }
+    }
+
+    fn get_raw_pipeline_data(
+        &self,
+        id: u32,
+        swapchain_image_index: usize
+    ) -> PipelineCreationData {
+        if id != PIPELINE_INDEX_MAIN {
+            panic!("Bad pipeline resource ID");
+        }
+        PipelineCreationData {
+            pipeline_layout_index: PIPELINE_LAYOUT_INDEX_MAIN,
+            renderpass_index: RENDERPASS_INDEX_MAIN,
+            descriptor_set_layout_id: DESCRIPTOR_SET_LAYOUT_INDEX_MAIN,
+            vertex_shader_index: SHADER_INDEX_VERTEX,
+            fragment_shader_index: SHADER_INDEX_FRAGMENT,
+            vbo_index: VBO_INDEX_SCENE,
+            texture_index: TEXTURE_INDEX_TERRAIN,
+            vbo_stride_bytes: std::mem::size_of::<StaticVertex>() as u32,
+            ubo_size_bytes: std::mem::size_of::<SomeUniformBuffer>(),
+            swapchain_image_index
         }
     }
 }

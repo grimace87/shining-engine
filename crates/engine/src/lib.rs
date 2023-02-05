@@ -66,10 +66,18 @@ impl<M: 'static + Send + Debug> Engine<M> {
             panic!("Internal error");
         };
         let mut internals = EngineInternals::new(&window, &app).unwrap();
+        {
+            let scene = app.get_scene();
+            let renderable = scene.get_renderable();
+            internals.record_graphics_commands(&renderable).unwrap();
+        }
         let running_window_id = window.get_window_id();
         app.on_window_state_event(WindowStateEvent::Starting);
         let code = looper.run_loop(move |event, _, control_flow| {
-            *control_flow = ControlFlow::Wait;
+            *control_flow = match *control_flow {
+                ControlFlow::ExitWithCode(_) => return,
+                _ => ControlFlow::Wait
+            };
             match event {
                 Event::UserEvent(command) => {
                     match command {

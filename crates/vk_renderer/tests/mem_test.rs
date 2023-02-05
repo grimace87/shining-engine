@@ -16,7 +16,8 @@ use std::fmt::Debug;
 use model::{COLLADA, Config};
 use resource::{
     ResourceManager, BufferUsage, ImageUsage, VboCreationData, TextureCreationData,
-    RawResourceBearer, ShaderCreationData
+    RawResourceBearer, ShaderCreationData, RenderpassCreationData, DescriptorSetLayoutCreationData,
+    PipelineLayoutCreationData, PipelineCreationData, OffscreenFramebufferData
 };
 
 const VBO_INDEX_SCENE: u32 = 0;
@@ -31,17 +32,21 @@ struct ResourceSource {}
 
 impl RawResourceBearer for ResourceSource {
 
-    fn get_model_resource_ids(&self) -> &[u32] {
-        &[VBO_INDEX_SCENE]
-    }
+    fn get_model_resource_ids(&self) -> &[u32] { &[VBO_INDEX_SCENE] }
 
-    fn get_texture_resource_ids(&self) -> &[u32] {
-        &[TEXTURE_INDEX_TERRAIN]
-    }
+    fn get_texture_resource_ids(&self) -> &[u32] { &[TEXTURE_INDEX_TERRAIN] }
 
-    fn get_shader_resource_ids(&self) -> &[u32] {
-        &[]
-    }
+    fn get_shader_resource_ids(&self) -> &[u32] { &[] }
+
+    fn get_offscreen_framebuffer_resource_ids(&self) -> &[u32] { &[] }
+
+    fn get_renderpass_resource_ids(&self) -> &[u32] { &[] }
+
+    fn get_descriptor_set_layout_resource_ids(&self) -> &[u32] { &[] }
+
+    fn get_pipeline_layout_resource_ids(&self) -> &[u32] { &[] }
+
+    fn get_pipeline_resource_ids(&self) -> &[u32] { &[] }
 
     fn get_raw_model_data(&self, id: u32) -> VboCreationData {
         if id != VBO_INDEX_SCENE {
@@ -76,6 +81,34 @@ impl RawResourceBearer for ResourceSource {
     fn get_raw_shader_data(&self, _id: u32) -> ShaderCreationData {
         panic!("Bad shader resource ID");
     }
+
+    fn get_raw_offscreen_framebuffer_data(&self, _id: u32) -> OffscreenFramebufferData {
+        panic!("Bad offscreen framebuffer resource ID");
+    }
+
+    fn get_raw_renderpass_data(
+        &self,
+        _id: u32,
+        _swapchain_image_index: usize
+    ) -> RenderpassCreationData {
+        panic!("Bad renderpass resource ID");
+    }
+
+    fn get_raw_descriptor_set_layout_data(&self, _id: u32) -> DescriptorSetLayoutCreationData {
+        panic!("Bad descriptor set layout resource ID");
+    }
+
+    fn get_raw_pipeline_layout_data(&self, _id: u32) -> PipelineLayoutCreationData {
+        panic!("Bad pipeline layout resource ID");
+    }
+
+    fn get_raw_pipeline_data(
+        &self,
+        _id: u32,
+        _swapchain_image_index: usize
+    ) -> PipelineCreationData {
+        panic!("Bad pipeline resource ID");
+    }
 }
 
 struct VulkanTestApp {
@@ -95,7 +128,7 @@ impl VulkanTestApp {
             let mut context = VkContext::new(&core, window).unwrap();
             let resource_source = ResourceSource {};
             let mut resource_manager = ResourceManager::new();
-            resource_manager.load_resources_from(&context, &resource_source).unwrap();
+            resource_manager.load_static_resources_from(&context, &resource_source).unwrap();
 
             // Release
             resource_manager.free_resources(&mut context).unwrap();

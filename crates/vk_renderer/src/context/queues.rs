@@ -52,6 +52,17 @@ impl Queue {
         Ok(command_buffer)
     }
 
+    pub unsafe fn free_command_buffers(&self, device: &Device) -> Result<(), VkError> {
+        device
+            .reset_command_pool(
+                self.command_buffer_pool,
+                vk::CommandPoolResetFlags::RELEASE_RESOURCES
+            )
+            .map_err(|e| {
+                VkError::OpFailed(format!("Error resetting command pool: {:?}", e))
+            })
+    }
+
     pub unsafe fn regenerate_command_buffers(
         &self,
         device: &Device,

@@ -54,6 +54,12 @@ impl VkContext {
         })
     }
 
+    pub fn release_command_buffers(&mut self) -> Result<(), VkError> {
+        unsafe {
+            self.graphics_queue.free_command_buffers(&self.device)
+        }
+    }
+
     pub fn teardown(&mut self) {
         unsafe {
             self.destroy_swapchain_resources();

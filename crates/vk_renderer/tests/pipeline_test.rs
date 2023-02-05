@@ -6,10 +6,7 @@
 /// The test creates a window, creates a VkCore and a VkContext, and then creates a some pipeline
 /// objects. Then it tears everything down.
 
-use vk_renderer::{
-    VkCore, VkContext, OffscreenFramebufferWrapper, RenderpassWrapper, PipelineWrapper,
-    TextureCodec, util::decode_texture
-};
+use vk_renderer::{VkCore, VkContext, TextureCodec, util::decode_texture};
 use window::{
     WindowEventLooper, RenderCycleEvent, RenderEventHandler, ControlFlow, Event, WindowEvent,
     WindowEventHandler, WindowStateEvent, Window, MessageProxy, WindowCommand
@@ -20,7 +17,9 @@ use vk_shader_macros::include_glsl;
 use model::{COLLADA, Config, StaticVertex};
 use resource::{
     ResourceManager, BufferUsage, ImageUsage, VboCreationData, TextureCreationData,
-    RawResourceBearer, ShaderCreationData, ShaderStage, TexturePixelFormat
+    RawResourceBearer, ShaderCreationData, ShaderStage, RenderpassCreationData,
+    DescriptorSetLayoutCreationData, PipelineLayoutCreationData, PipelineCreationData,
+    RenderpassTarget, UboUsage, OffscreenFramebufferData
 };
 
 const VBO_INDEX_SCENE: u32 = 0;
@@ -36,6 +35,14 @@ const VERTEX_SHADER: &[u32] = include_glsl!("../../resources/test/shaders/simple
 
 const SHADER_INDEX_FRAGMENT: u32 = 1;
 const FRAGMENT_SHADER: &[u32] = include_glsl!("../../resources/test/shaders/simple.frag");
+
+const RENDERPASS_INDEX_MAIN: u32 = 0;
+
+const DESCRIPTOR_SET_LAYOUT_INDEX_MAIN: u32 = 0;
+
+const PIPELINE_LAYOUT_INDEX_MAIN: u32 = 0;
+
+const PIPELINE_INDEX_MAIN: u32 = 0;
 
 #[repr(C)]
 struct SomeUniformBuffer {
@@ -57,6 +64,26 @@ impl RawResourceBearer for ResourceSource {
 
     fn get_shader_resource_ids(&self) -> &[u32] {
         &[SHADER_INDEX_VERTEX, SHADER_INDEX_FRAGMENT]
+    }
+
+    fn get_offscreen_framebuffer_resource_ids(&self) -> &[u32] {
+        &[]
+    }
+
+    fn get_renderpass_resource_ids(&self) -> &[u32] {
+        &[RENDERPASS_INDEX_MAIN]
+    }
+
+    fn get_descriptor_set_layout_resource_ids(&self) -> &[u32] {
+        &[DESCRIPTOR_SET_LAYOUT_INDEX_MAIN]
+    }
+
+    fn get_pipeline_layout_resource_ids(&self) -> &[u32] {
+        &[PIPELINE_LAYOUT_INDEX_MAIN]
+    }
+
+    fn get_pipeline_resource_ids(&self) -> &[u32] {
+        &[PIPELINE_INDEX_MAIN]
     }
 
     fn get_raw_model_data(&self, id: u32) -> VboCreationData {
@@ -102,6 +129,64 @@ impl RawResourceBearer for ResourceSource {
             _ => panic!("Bad texture resource ID")
         }
     }
+
+    fn get_raw_offscreen_framebuffer_data(&self, _id: u32) -> OffscreenFramebufferData {
+        panic!("Bad offscreen framebuffer resource ID");
+    }
+
+    fn get_raw_renderpass_data(
+        &self,
+        id: u32,
+        swapchain_image_index: usize
+    ) -> RenderpassCreationData {
+        if id != RENDERPASS_INDEX_MAIN {
+            panic!("Bad renderpass resource ID");
+        }
+        RenderpassCreationData {
+            target: RenderpassTarget::SwapchainImageWithDepth,
+            swapchain_image_index
+        }
+    }
+
+    fn get_raw_descriptor_set_layout_data(&self, id: u32) -> DescriptorSetLayoutCreationData {
+        if id != DESCRIPTOR_SET_LAYOUT_INDEX_MAIN {
+            panic!("Bad descriptor set layout resource ID");
+        }
+        DescriptorSetLayoutCreationData {
+            ubo_usage: UboUsage::VertexShaderRead
+        }
+    }
+
+    fn get_raw_pipeline_layout_data(&self, id: u32) -> PipelineLayoutCreationData {
+        if id != PIPELINE_LAYOUT_INDEX_MAIN {
+            panic!("Bad pipeline layout resource ID");
+        }
+        PipelineLayoutCreationData {
+            descriptor_set_layout_index: DESCRIPTOR_SET_LAYOUT_INDEX_MAIN
+        }
+    }
+
+    fn get_raw_pipeline_data(
+        &self,
+        id: u32,
+        swapchain_image_index: usize
+    ) -> PipelineCreationData {
+        if id != PIPELINE_INDEX_MAIN {
+            panic!("Bad pipeline resource ID");
+        }
+        PipelineCreationData {
+            pipeline_layout_index: PIPELINE_LAYOUT_INDEX_MAIN,
+            renderpass_index: RENDERPASS_INDEX_MAIN,
+            descriptor_set_layout_id: DESCRIPTOR_SET_LAYOUT_INDEX_MAIN,
+            vertex_shader_index: SHADER_INDEX_VERTEX,
+            fragment_shader_index: SHADER_INDEX_FRAGMENT,
+            vbo_index: VBO_INDEX_SCENE,
+            texture_index: TEXTURE_INDEX_TERRAIN,
+            vbo_stride_bytes: std::mem::size_of::<StaticVertex>() as u32,
+            ubo_size_bytes: std::mem::size_of::<SomeUniformBuffer>(),
+            swapchain_image_index
+        }
+    }
 }
 
 struct VulkanTestApp {
@@ -121,61 +206,27 @@ impl VulkanTestApp {
             let mut context = VkContext::new(&core, window).unwrap();
             let resource_source = ResourceSource {};
             let mut resource_manager = ResourceManager::new();
-            resource_manager.load_resources_from(&context, &resource_source).unwrap();
-
-            // Create the pipelines
-            let (mut framebuffer_1, renderpass_1, pipeline_1) =
-                Self::create_pipeline(&context, &resource_manager);
+            let current_extent = context.get_extent().unwrap();
+            resource_manager
+                .load_static_resources_from(
+                    &context,
+                    &resource_source)
+                .unwrap();
+            resource_manager
+                .load_dynamic_resources_from(
+                    &context,
+                    &resource_source,
+                    context.get_swapchain_image_count(),
+                    current_extent.width,
+                    current_extent.height)
+                .unwrap();
 
             // Release
-            pipeline_1.destroy_resources(&context);
-            renderpass_1.destroy_resources(&context);
-            framebuffer_1.destroy(&context).unwrap();
             resource_manager.free_resources(&mut context).unwrap();
             context.teardown();
             core.teardown();
         }
         Self { message_proxy }
-    }
-
-    unsafe fn create_pipeline(
-        context: &VkContext,
-        resource_manager: &ResourceManager<VkContext>
-    ) -> (OffscreenFramebufferWrapper, RenderpassWrapper, PipelineWrapper) {
-
-        let render_extent = ash::vk::Extent2D::builder()
-            .width(128)
-            .height(128)
-            .build();
-        let framebuffer = OffscreenFramebufferWrapper::new(
-            context,
-            render_extent.width,
-            render_extent.height,
-            TexturePixelFormat::Rgba,
-            TexturePixelFormat::None)
-            .unwrap();
-        let renderpass = RenderpassWrapper::new_with_offscreen_target(
-            context,
-            &framebuffer)
-            .unwrap();
-        let mut pipeline = PipelineWrapper::new();
-
-        pipeline.create_resources(
-            context,
-            resource_manager,
-            &renderpass,
-            SHADER_INDEX_VERTEX,
-            SHADER_INDEX_FRAGMENT,
-            VBO_INDEX_SCENE,
-            std::mem::size_of::<StaticVertex>() as u32,
-            std::mem::size_of::<SomeUniformBuffer>(),
-            ash::vk::ShaderStageFlags::VERTEX | ash::vk::ShaderStageFlags::FRAGMENT,
-            false,
-            TEXTURE_INDEX_TERRAIN,
-            false,
-            render_extent)
-            .unwrap();
-        (framebuffer, renderpass, pipeline)
     }
 }
 
