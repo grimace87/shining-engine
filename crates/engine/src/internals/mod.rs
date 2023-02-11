@@ -1,10 +1,9 @@
 
-use crate::{SceneFactory, Renderable, StockTimer, Timer};
+use crate::{StockTimer, Timer, Scene};
 use vk_renderer::{VkError, VkCore, VkContext, PresentResult};
-use window::{Window, PhysicalSize, event::{RenderEventHandler, WindowEventHandler}};
+use window::{Window, PhysicalSize};
 use resource::{ResourceManager, RawResourceBearer};
 use std::cell::RefCell;
-use std::fmt::Debug;
 
 pub struct EngineInternals {
     timer: StockTimer,
@@ -16,10 +15,7 @@ pub struct EngineInternals {
 
 impl EngineInternals {
 
-    pub fn new<M, A>(window: &Window, app: &A) -> Result<Self, VkError> where
-        M: 'static + Send + Debug,
-        A: 'static + WindowEventHandler<M> + RenderEventHandler + RawResourceBearer + SceneFactory
-    {
+    pub fn new(window: &Window, scene: &Box<dyn RawResourceBearer>) -> Result<Self, VkError> {
         // Creation of required components
         let core = unsafe { VkCore::new(&window, vec![]).unwrap() };
         let context = VkContext::new(&core, &window).unwrap();
@@ -27,11 +23,11 @@ impl EngineInternals {
 
         // Load needed resources
         let current_extent = context.get_extent()?;
-        resource_manager.load_static_resources_from(&context, app).unwrap();
+        resource_manager.load_static_resources_from(&context, scene).unwrap();
         resource_manager
             .load_dynamic_resources_from(
                 &context,
-                app,
+                scene,
                 context.get_swapchain_image_count(),
                 current_extent.width,
                 current_extent.height)
@@ -69,14 +65,14 @@ impl EngineInternals {
 
     pub fn record_graphics_commands(
         &self,
-        renderable: &Box<dyn Renderable>
+        scene: &Box<dyn Scene>
     ) -> Result<(), VkError> {
         let context = self.render_context.borrow();
         let resource_manager = self.resource_manager.borrow();
         for image_index in 0..context.get_swapchain_image_count() {
             let command_buffer = context.get_graphics_command_buffer(image_index);
             unsafe {
-                renderable.record_commands(
+                scene.record_commands(
                     &context.device,
                     command_buffer,
                     context.get_extent()?,
@@ -95,15 +91,12 @@ impl EngineInternals {
         self.last_known_client_area_size
     }
 
-    pub fn recreate_surface<M, A>(
+    pub fn recreate_surface(
         &mut self,
         window: &Window,
         new_client_area_size: PhysicalSize<u32>,
-        app: &A
-    ) -> Result<(), VkError> where
-        M: 'static + Send + Debug,
-        A: 'static + WindowEventHandler<M> + RenderEventHandler + RawResourceBearer + SceneFactory
-    {
+        scene: &Box<dyn Scene>
+    ) -> Result<(), VkError> {
         // Wait for the device to be idle
         unsafe {
             self.render_context.borrow().wait_until_device_idle()?;
@@ -111,8 +104,7 @@ impl EngineInternals {
 
         // Get needed things
         let core = self.render_core.borrow();
-        let scene = app.get_scene();
-        let renderable = scene.get_renderable();
+        let resource_bearer = scene.get_resource_bearer();
 
         // Recreate everything
         unsafe {
@@ -125,20 +117,17 @@ impl EngineInternals {
             resource_manager
                 .load_dynamic_resources_from(
                     &context,
-                    app,
+                    &resource_bearer,
                     context.get_swapchain_image_count(),
                     current_extent.width,
                     current_extent.height)?;
         }
-        self.record_graphics_commands(&renderable)?;
+        self.record_graphics_commands(scene)?;
         self.last_known_client_area_size = new_client_area_size;
         Ok(())
     }
 
-    pub fn render_frame<M, A>(&mut self, app: &A) -> Result<PresentResult, VkError> where
-        M: 'static + Send + Debug,
-        A: 'static + WindowEventHandler<M> + RenderEventHandler + RawResourceBearer + SceneFactory
-    {
+    pub fn render_frame(&mut self, scene: &Box<dyn Scene>) -> Result<PresentResult, VkError> {
         let mut context = self.render_context.borrow_mut();
         let resource_manager = self.resource_manager.borrow();
         unsafe {
@@ -147,9 +136,7 @@ impl EngineInternals {
                 return Ok(PresentResult::SwapchainOutOfDate);
             }
 
-            let scene = app.get_scene();
-            let renderable = scene.get_renderable();
-            renderable.prepare_frame_render(image_index, &resource_manager)?;
+            scene.prepare_frame_render(image_index, &resource_manager)?;
             context.submit_and_present()
         }
     }

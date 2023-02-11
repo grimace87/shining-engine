@@ -34,10 +34,10 @@ impl<L: ResourceLoader> ResourceManager<L> {
     /// This includes immutable vertex buffers, textures, and static shaders.
     /// These can still be released any time if no longer needed, but there should be no reason
     /// to do this besides keeping memory usage down.
-    pub fn load_static_resources_from<B: RawResourceBearer>(
+    pub fn load_static_resources_from(
         &mut self,
         loader: &L,
-        bearer: &B
+        bearer: &Box<dyn RawResourceBearer>
     ) -> Result<(), L::LoadError> {
 
         let model_ids = bearer.get_model_resource_ids();
@@ -88,10 +88,10 @@ impl<L: ResourceLoader> ResourceManager<L> {
     /// These resources may need to be recreated at any time independent of what the app is doing,
     /// and depends more on the running environment. Recreating the Vulkan swapchain will be an
     /// example of a case where many of these resources will need to be recreated.
-    pub fn load_dynamic_resources_from<B: RawResourceBearer>(
+    pub fn load_dynamic_resources_from(
         &mut self,
         loader: &L,
-        bearer: &B,
+        bearer: &Box<dyn RawResourceBearer>,
         swapchain_size: usize,
         current_swapchain_width: u32,
         current_swapchain_height: u32

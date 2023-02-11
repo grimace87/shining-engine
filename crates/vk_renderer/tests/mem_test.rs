@@ -126,7 +126,7 @@ impl VulkanTestApp {
             // Creation
             let mut core = VkCore::new(window, vec![]).unwrap();
             let mut context = VkContext::new(&core, window).unwrap();
-            let resource_source = ResourceSource {};
+            let resource_source: Box<dyn RawResourceBearer> = Box::new(ResourceSource {});
             let mut resource_manager = ResourceManager::new();
             resource_manager.load_static_resources_from(&context, &resource_source).unwrap();
 

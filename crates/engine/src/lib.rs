@@ -1,18 +1,15 @@
 mod internals;
-mod renderable;
 mod scene;
 mod timer;
 
-pub use renderable::{
-    Renderable,
-    stock::StockRenderable,
-    null::NullRenderable
-};
 pub use scene::{
-    Scene, SceneFactory,
-    stock::{StockScene, StockSceneFactory}
+    Scene,
+    SceneFactory,
+    stock::{StockScene, StockResourceBearer},
+    null::NullScene
 };
 pub use timer::{Timer, stock::StockTimer};
+pub use vk_renderer::{VkError, VkContext};
 
 use internals::EngineInternals;
 use window::{
@@ -21,7 +18,6 @@ use window::{
     Event, WindowEvent, KeyboardInput, ControlFlow,
     event::{RenderEventHandler, WindowEventHandler}
 };
-use resource::RawResourceBearer;
 use vk_renderer::PresentResult;
 use std::fmt::Debug;
 
@@ -47,7 +43,7 @@ impl<M: 'static + Send + Debug> Engine<M> {
     }
 
     pub fn run<A>(self, app: A) where
-        A: 'static + WindowEventHandler<M> + RenderEventHandler + RawResourceBearer + SceneFactory
+        A: 'static + WindowEventHandler<M> + RenderEventHandler + SceneFactory
     {
         // Create the window
         let Some(looper) = &self.looper else {
@@ -60,17 +56,18 @@ impl<M: 'static + Send + Debug> Engine<M> {
     }
 
     fn run_main_loop<A>(mut self, window: Window, mut app: A) where
-        A: 'static + WindowEventHandler<M> + RenderEventHandler + RawResourceBearer + SceneFactory
+        A: 'static + WindowEventHandler<M> + RenderEventHandler + SceneFactory
     {
         let Some(looper) = self.looper.take() else {
             panic!("Internal error");
         };
-        let mut internals = EngineInternals::new(&window, &app).unwrap();
-        {
+        let mut internals = {
             let scene = app.get_scene();
-            let renderable = scene.get_renderable();
-            internals.record_graphics_commands(&renderable).unwrap();
-        }
+            let resource_bearer = scene.get_resource_bearer();
+            let internals = EngineInternals::new(&window, &resource_bearer).unwrap();
+            internals.record_graphics_commands(&scene).unwrap();
+            internals
+        };
         let running_window_id = window.get_window_id();
         app.on_window_state_event(WindowStateEvent::Starting);
         let code = looper.run_loop(move |event, _, control_flow| {
@@ -130,9 +127,10 @@ impl<M: 'static + Send + Debug> Engine<M> {
                             if last_known_size != client_area_dimensions {
                                 let aspect_ratio = client_area_dimensions.width as f32 /
                                     client_area_dimensions.height as f32;
+                                let scene = app.get_scene();
                                 app.on_render_cycle_event(
                                     RenderCycleEvent::RecreatingSurface(aspect_ratio));
-                                internals.recreate_surface(&window, client_area_dimensions, &app)
+                                internals.recreate_surface(&window, client_area_dimensions, &scene)
                                     .unwrap();
                             }
                         },
@@ -148,15 +146,17 @@ impl<M: 'static + Send + Debug> Engine<M> {
                 },
                 Event::RedrawRequested(_) => {
                     app.on_render_cycle_event(RenderCycleEvent::RenderingFrame);
-                    match internals.render_frame(&app) {
+                    let scene = app.get_scene();
+                    match internals.render_frame(&scene) {
                         Ok(PresentResult::Ok) => {},
                         Ok(PresentResult::SwapchainOutOfDate) => {
                             let last_known_size = internals.get_last_known_size();
                             let aspect_ratio = last_known_size.width as f32 /
                                 last_known_size.height as f32;
+                            let scene = app.get_scene();
                             app.on_render_cycle_event(
                                 RenderCycleEvent::RecreatingSurface(aspect_ratio));
-                            internals.recreate_surface(&window, last_known_size, &app)
+                            internals.recreate_surface(&window, last_known_size, &scene)
                                 .unwrap();
                         },
                         Err(e) => {
