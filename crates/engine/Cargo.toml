@@ -8,6 +8,7 @@ ash = { workspace = true }
 vk-shader-macros = { workspace = true }
 cgmath = { workspace = true }
 camera = { path = "../camera" }
+control = { path = "../control" }
 model = { path = "../model" }
 resource = { path = "../resource" }
 vk_renderer = { path = "../vk_renderer" }

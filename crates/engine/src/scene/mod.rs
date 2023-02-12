@@ -25,7 +25,7 @@ pub trait Scene {
     ) -> Result<(), VkError>;
 
     /// Perform per-frame state updates
-    fn update(&mut self, time_step_seconds: f64);
+    fn update(&mut self, time_step_millis: u64, control_dx: f32, control_dy: f32);
 
     /// Prepare for rendering a frame
     unsafe fn prepare_frame_render(

@@ -6,12 +6,14 @@ use window::{
     Event, WindowEvent, KeyboardInput, ControlFlow,
     RenderEventHandler, WindowEventHandler
 };
+use control::{ControlIo, UserControl};
 use vk_renderer::PresentResult;
 use std::fmt::Debug;
 
 pub struct Engine<M: 'static + Send + Debug> {
     app_title: &'static str,
-    looper: Option<WindowEventLooper<M>>
+    looper: Option<WindowEventLooper<M>>,
+    control: UserControl
 }
 
 impl<M: 'static + Send + Debug> Engine<M> {
@@ -19,7 +21,8 @@ impl<M: 'static + Send + Debug> Engine<M> {
     pub fn new(app_title: &'static str) -> Self {
         Self {
             app_title,
-            looper: Some(WindowEventLooper::new())
+            looper: Some(WindowEventLooper::new()),
+            control: UserControl::new()
         }
     }
 
@@ -95,6 +98,7 @@ impl<M: 'static + Send + Debug> Engine<M> {
                                         WindowStateEvent::KeyEvent(
                                             keycode,
                                             state));
+                                    self.control.process_keyboard_event(keycode, state);
                                 },
                                 _ => {}
                             };
@@ -130,7 +134,10 @@ impl<M: 'static + Send + Debug> Engine<M> {
                     let time_passed_millis = internals.pull_time_step_millis();
                     app.on_render_cycle_event(
                         RenderCycleEvent::PrepareUpdate(time_passed_millis));
-                    scene.update(time_passed_millis as f64);
+                    scene.update(
+                        time_passed_millis,
+                        self.control.get_dx(),
+                        self.control.get_dy());
                     window.request_redraw();
                 },
                 Event::RedrawRequested(_) => {

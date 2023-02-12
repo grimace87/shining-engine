@@ -35,7 +35,7 @@ impl Scene for NullScene {
         Ok(())
     }
 
-    fn update(&mut self, _time_step_seconds: f64) {}
+    fn update(&mut self, _time_step_millis: u64, _control_dx: f32, _control_dy: f32) {}
 
     unsafe fn prepare_frame_render(
         &self,

@@ -174,10 +174,12 @@ impl Scene for StockScene {
         Ok(())
     }
 
-    fn update(&mut self, time_step_seconds: f64) {
+    fn update(&mut self, time_step_millis: u64, control_dx: f32, control_dy: f32) {
+        let time_step_seconds = (time_step_millis as f64) * 0.001;
         self.total_time = self.total_time + time_step_seconds;
+        self.camera.update(time_step_millis, control_dx, control_dy);
 
-        let model_matrix = Matrix4::from_angle_y(Rad(self.total_time as f32 * 0.002));
+        let model_matrix = Matrix4::from_angle_y(Rad(self.total_time as f32));
         let view_matrix = self.camera.get_view_matrix();
         let projection_matrix = self.camera.get_projection_matrix();
         self.ubo.mvp_matrix = projection_matrix * view_matrix * model_matrix;
