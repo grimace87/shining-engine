@@ -2,7 +2,7 @@
 use window::{
     RenderCycleEvent, WindowStateEvent, Window, WindowCommand, WindowEventLooper, MessageProxy,
     Event, WindowEvent, ControlFlow,
-    event::{RenderEventHandler, WindowEventHandler}
+    RenderEventHandler, WindowEventHandler
 };
 
 #[derive(PartialEq, Debug)]

@@ -1,5 +1,5 @@
 mod window;
-pub mod event;
+mod event;
 
 pub use crate::window::Window;
 pub use crate::event::{

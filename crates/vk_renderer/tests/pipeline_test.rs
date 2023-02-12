@@ -6,7 +6,7 @@
 /// The test creates a window, creates a VkCore and a VkContext, and then creates a some pipeline
 /// objects. Then it tears everything down.
 
-use vk_renderer::{VkCore, VkContext, TextureCodec, util::decode_texture};
+use vk_renderer::{VkCore, VkContext, TextureCodec, ResourceUtilities};
 use window::{
     WindowEventLooper, RenderCycleEvent, RenderEventHandler, ControlFlow, Event, WindowEvent,
     WindowEventHandler, WindowStateEvent, Window, MessageProxy, WindowCommand
@@ -109,7 +109,7 @@ impl RawResourceBearer for ResourceSource {
         if id != TEXTURE_INDEX_TERRAIN {
             panic!("Bad texture resource ID");
         }
-        decode_texture(
+        ResourceUtilities::decode_texture(
             TERRAIN_TEXTURE_BYTES,
             TextureCodec::Jpeg,
             ImageUsage::TextureSampleOnly)

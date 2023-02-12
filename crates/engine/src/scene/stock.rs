@@ -1,6 +1,6 @@
 
 use crate::{Scene, PlayerCamera};
-use vk_renderer::{VkContext, VkError, TextureCodec, util::decode_texture};
+use vk_renderer::{VkContext, VkError, TextureCodec, ResourceUtilities};
 use model::{StaticVertex, COLLADA, Config};
 use resource::{
     ResourceManager, BufferUsage, ImageUsage, VboCreationData, TextureCreationData,
@@ -10,7 +10,7 @@ use resource::{
 };
 use vk_shader_macros::include_glsl;
 use ash::{Device, vk};
-use cgmath::{Matrix4, SquareMatrix, Rad, Vector3};
+use cgmath::{Matrix4, SquareMatrix, Rad};
 use std::borrow::Borrow;
 
 const VBO_INDEX_SCENE: u32 = 0;
@@ -264,7 +264,7 @@ impl RawResourceBearer for StockResourceBearer {
         if id != TEXTURE_INDEX_TERRAIN {
             panic!("Bad texture resource ID");
         }
-        decode_texture(
+        ResourceUtilities::decode_texture(
             TERRAIN_TEXTURE_BYTES,
             TextureCodec::Jpeg,
             ImageUsage::TextureSampleOnly)

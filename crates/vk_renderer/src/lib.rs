@@ -9,7 +9,7 @@ pub use crate::core::FeatureDeclaration;
 pub use context::VkContext;
 pub use context::PresentResult;
 pub use context::Queue;
-pub use crate::resource::util::TextureCodec;
+pub use crate::resource::util::{TextureCodec, ResourceUtilities};
 pub use crate::resource::buffer::BufferWrapper;
 pub use crate::resource::image::ImageWrapper;
 pub use pipeline::{
@@ -24,11 +24,4 @@ pub enum VkError {
     MissingResource(String),
     Compatibility(String),
     EngineError(String)
-}
-
-pub mod util {
-    pub use super::resource::util::{
-        decode_model,
-        decode_texture
-    };
 }
