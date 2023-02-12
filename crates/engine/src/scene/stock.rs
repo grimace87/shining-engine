@@ -1,5 +1,6 @@
 
-use crate::{Scene, PlayerCamera};
+use crate::Scene;
+use camera::PlayerCamera;
 use vk_renderer::{VkContext, VkError, TextureCodec, ResourceUtilities};
 use model::{StaticVertex, COLLADA, Config};
 use resource::{
