@@ -1,5 +1,6 @@
 mod internals;
 mod scene;
+mod camera;
 mod timer;
 
 pub use scene::{
@@ -8,6 +9,7 @@ pub use scene::{
     stock::{StockScene, StockResourceBearer},
     null::NullScene
 };
+pub use camera::player::PlayerCamera;
 pub use timer::{Timer, stock::StockTimer};
 pub use vk_renderer::{VkError, VkContext};
 
@@ -70,6 +72,7 @@ impl<M: 'static + Send + Debug> Engine<M> {
         };
         let running_window_id = window.get_window_id();
         app.on_window_state_event(WindowStateEvent::Starting);
+        let mut scene = app.get_scene();
         let code = looper.run_loop(move |event, _, control_flow| {
             *control_flow = match *control_flow {
                 ControlFlow::ExitWithCode(_) => return,
@@ -127,7 +130,6 @@ impl<M: 'static + Send + Debug> Engine<M> {
                             if last_known_size != client_area_dimensions {
                                 let aspect_ratio = client_area_dimensions.width as f32 /
                                     client_area_dimensions.height as f32;
-                                let scene = app.get_scene();
                                 app.on_render_cycle_event(
                                     RenderCycleEvent::RecreatingSurface(aspect_ratio));
                                 internals.recreate_surface(&window, client_area_dimensions, &scene)
@@ -142,18 +144,17 @@ impl<M: 'static + Send + Debug> Engine<M> {
                     let time_passed_millis = internals.pull_time_step_millis();
                     app.on_render_cycle_event(
                         RenderCycleEvent::PrepareUpdate(time_passed_millis));
+                    scene.update(time_passed_millis as f64);
                     window.request_redraw();
                 },
                 Event::RedrawRequested(_) => {
                     app.on_render_cycle_event(RenderCycleEvent::RenderingFrame);
-                    let scene = app.get_scene();
                     match internals.render_frame(&scene) {
                         Ok(PresentResult::Ok) => {},
                         Ok(PresentResult::SwapchainOutOfDate) => {
                             let last_known_size = internals.get_last_known_size();
                             let aspect_ratio = last_known_size.width as f32 /
                                 last_known_size.height as f32;
-                            let scene = app.get_scene();
                             app.on_render_cycle_event(
                                 RenderCycleEvent::RecreatingSurface(aspect_ratio));
                             internals.recreate_surface(&window, last_known_size, &scene)

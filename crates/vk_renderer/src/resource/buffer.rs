@@ -84,7 +84,7 @@ impl BufferWrapper {
 
     /// Map the backed memory, then update it from a host-owned pointer
     pub unsafe fn update<T: Sized>(
-        &mut self,
+        &self,
         allocator: &MemoryAllocator,
         dst_offset_elements: isize,
         src_ptr: *const T,

@@ -31,10 +31,10 @@ const TERRAIN_TEXTURE_BYTES: &[u8] =
     include_bytes!("../../../resources/test/textures/simple_outdoor_texture.jpg");
 
 const SHADER_INDEX_VERTEX: u32 = 0;
-const VERTEX_SHADER: &[u32] = include_glsl!("../../resources/test/shaders/simple.vert");
+const VERTEX_SHADER: &[u32] = include_glsl!("../../resources/test/shaders/stock.vert");
 
 const SHADER_INDEX_FRAGMENT: u32 = 1;
-const FRAGMENT_SHADER: &[u32] = include_glsl!("../../resources/test/shaders/simple.frag");
+const FRAGMENT_SHADER: &[u32] = include_glsl!("../../resources/test/shaders/stock.frag");
 
 const RENDERPASS_INDEX_MAIN: u32 = 0;
 

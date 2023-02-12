@@ -1,5 +1,5 @@
 
-use crate::Scene;
+use crate::{Scene, PlayerCamera};
 use vk_renderer::{VkContext, VkError, TextureCodec, util::decode_texture};
 use model::{StaticVertex, COLLADA, Config};
 use resource::{
@@ -10,7 +10,8 @@ use resource::{
 };
 use vk_shader_macros::include_glsl;
 use ash::{Device, vk};
-use cgmath::{Matrix4, SquareMatrix, Rad};
+use cgmath::{Matrix4, SquareMatrix, Rad, Vector3};
+use std::borrow::Borrow;
 
 const VBO_INDEX_SCENE: u32 = 0;
 const SCENE_MODEL_BYTES: &[u8] =
@@ -21,10 +22,10 @@ const TERRAIN_TEXTURE_BYTES: &[u8] =
     include_bytes!("../../../../resources/test/textures/simple_outdoor_texture.jpg");
 
 const SHADER_INDEX_VERTEX: u32 = 0;
-const VERTEX_SHADER: &[u32] = include_glsl!("../../resources/test/shaders/simple.vert");
+const VERTEX_SHADER: &[u32] = include_glsl!("../../resources/test/shaders/stock.vert");
 
 const SHADER_INDEX_FRAGMENT: u32 = 1;
-const FRAGMENT_SHADER: &[u32] = include_glsl!("../../resources/test/shaders/simple.frag");
+const FRAGMENT_SHADER: &[u32] = include_glsl!("../../resources/test/shaders/stock.frag");
 
 const RENDERPASS_INDEX_MAIN: u32 = 0;
 
@@ -35,8 +36,8 @@ const PIPELINE_LAYOUT_INDEX_MAIN: u32 = 0;
 const PIPELINE_INDEX_MAIN: u32 = 0;
 
 #[repr(C)]
-pub struct CameraUbo {
-    pub camera_matrix: Matrix4<f32>
+pub struct StockUbo {
+    pub mvp_matrix: Matrix4<f32>
 }
 
 /// TODO - Replace this type with derived implementations of Renderable using macros or some such.
@@ -44,7 +45,8 @@ pub struct CameraUbo {
 /// without any explicit lighting.
 pub struct StockScene {
     total_time: f64,
-    camera_transform: CameraUbo
+    camera: PlayerCamera,
+    ubo: StockUbo
 }
 
 pub struct StockResourceBearer {}
@@ -53,8 +55,9 @@ impl StockScene {
     pub fn new() -> Self {
         Self {
             total_time: 0.0,
-            camera_transform: CameraUbo {
-                camera_matrix: Matrix4::identity()
+            camera: PlayerCamera::new(0.0, 1.5, -5.0, 0.0),
+            ubo: StockUbo {
+                mvp_matrix: Matrix4::identity()
             }
         }
     }
@@ -172,16 +175,28 @@ impl Scene for StockScene {
 
     fn update(&mut self, time_step_seconds: f64) {
         self.total_time = self.total_time + time_step_seconds;
-        self.camera_transform.camera_matrix = Matrix4::from_angle_y(
-            Rad(self.total_time as f32));
+
+        let model_matrix = Matrix4::from_angle_y(Rad(self.total_time as f32 * 0.002));
+        let view_matrix = self.camera.get_view_matrix();
+        let projection_matrix = self.camera.get_projection_matrix();
+        self.ubo.mvp_matrix = projection_matrix * view_matrix * model_matrix;
     }
 
     unsafe fn prepare_frame_render(
         &self,
-        _swapchain_image_index: usize,
-        _resource_manager: &ResourceManager<VkContext>
+        context: &VkContext,
+        swapchain_image_index: usize,
+        resource_manager: &ResourceManager<VkContext>
     ) -> Result<(), VkError> {
-        // TODO - Update uniform buffer if there is one
+        let resource_bearer = self.get_resource_bearer();
+        let pipeline_description = resource_bearer
+            .get_raw_pipeline_data(0, swapchain_image_index);
+        let complex_id = pipeline_description.encode_complex_pipeline_id(0);
+        let pipeline = resource_manager.get_pipeline_handle(complex_id)?;
+        pipeline.update_uniform_buffer(
+            context,
+            self.ubo.borrow() as *const StockUbo as *const u8,
+            std::mem::size_of::<StockUbo>())?;
         Ok(())
     }
 }
@@ -323,7 +338,7 @@ impl RawResourceBearer for StockResourceBearer {
             vbo_index: VBO_INDEX_SCENE,
             texture_index: TEXTURE_INDEX_TERRAIN,
             vbo_stride_bytes: std::mem::size_of::<StaticVertex>() as u32,
-            ubo_size_bytes: std::mem::size_of::<CameraUbo>(),
+            ubo_size_bytes: std::mem::size_of::<StockUbo>(),
             swapchain_image_index
         }
     }

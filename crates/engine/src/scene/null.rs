@@ -39,6 +39,7 @@ impl Scene for NullScene {
 
     unsafe fn prepare_frame_render(
         &self,
+        _context: &VkContext,
         _swapchain_image_index: usize,
         _resource_manager: &ResourceManager<VkContext>
     ) -> Result<(), VkError> {

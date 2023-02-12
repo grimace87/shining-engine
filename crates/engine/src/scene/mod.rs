@@ -30,6 +30,7 @@ pub trait Scene {
     /// Prepare for rendering a frame
     unsafe fn prepare_frame_render(
         &self,
+        context: &VkContext,
         swapchain_image_index: usize,
         resource_manager: &ResourceManager<VkContext>
     ) -> Result<(), VkError>;

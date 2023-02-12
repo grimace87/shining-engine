@@ -136,7 +136,7 @@ impl EngineInternals {
                 return Ok(PresentResult::SwapchainOutOfDate);
             }
 
-            scene.prepare_frame_render(image_index, &resource_manager)?;
+            scene.prepare_frame_render(&context, image_index, &resource_manager)?;
             context.submit_and_present()
         }
     }

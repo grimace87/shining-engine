@@ -338,7 +338,7 @@ impl PipelineWrapper {
 
     /// Update the uniform buffer for this step from the supplied pointer and data size
     pub unsafe fn update_uniform_buffer(
-        &mut self,
+        &self,
         context: &VkContext,
         data_ptr: *const u8,
         size_bytes: usize
