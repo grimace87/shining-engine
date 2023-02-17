@@ -23,5 +23,6 @@ pub enum VkError {
     OpFailed(String),
     MissingResource(String),
     Compatibility(String),
-    EngineError(String)
+    EngineError(String),
+    UserError(String)
 }

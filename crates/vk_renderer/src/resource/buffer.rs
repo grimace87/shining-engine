@@ -15,6 +15,8 @@ struct BufferCreationParams {
 /// Wraps up a Vulkan Buffer and its memory allocation that backs it
 pub struct BufferWrapper {
     pub buffer: vk::Buffer,
+    pub size_bytes: usize,
+    pub element_count: usize,
     allocation: MemoryAllocation
 }
 
@@ -25,6 +27,7 @@ impl BufferWrapper {
         context: &VkContext,
         buffer_usage: BufferUsage,
         size_bytes: usize,
+        element_count: usize,
         init_data: Option<&[T]>
     ) -> Result<BufferWrapper, VkError> {
 
@@ -62,6 +65,8 @@ impl BufferWrapper {
 
         Ok(BufferWrapper {
             buffer,
+            size_bytes,
+            element_count,
             allocation
         })
     }
@@ -70,6 +75,8 @@ impl BufferWrapper {
     pub fn empty() -> BufferWrapper {
         BufferWrapper {
             buffer: vk::Buffer::null(),
+            size_bytes: 0,
+            element_count: 0,
             allocation: MemoryAllocation::null()
         }
     }
@@ -90,6 +97,15 @@ impl BufferWrapper {
         src_ptr: *const T,
         element_count: usize
     ) -> Result<(), VkError> {
+        let offset_bytes = dst_offset_elements as usize * std::mem::size_of::<T>();
+        let update_range_bytes = element_count * std::mem::size_of::<T>();
+        if offset_bytes + update_range_bytes > self.size_bytes {
+            return Err(VkError::EngineError(format!(
+                "Attempting to update buffer outside of range: offset {}, range {}, size {}",
+                offset_bytes,
+                update_range_bytes,
+                self.size_bytes)))
+        }
         let mut dst_ptr = allocator.map_memory::<T>(&self.allocation)?;
         dst_ptr = dst_ptr.offset(dst_offset_elements);
         dst_ptr.copy_from_nonoverlapping(src_ptr, element_count);

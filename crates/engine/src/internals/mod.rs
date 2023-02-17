@@ -15,7 +15,7 @@ pub struct EngineInternals {
 
 impl EngineInternals {
 
-    pub fn new(window: &Window, scene: &Box<dyn RawResourceBearer>) -> Result<Self, VkError> {
+    pub fn new<T: Sized>(window: &Window, scene: &Box<dyn RawResourceBearer<T>>) -> Result<Self, VkError> {
         // Creation of required components
         let core = unsafe { VkCore::new(&window, vec![]).unwrap() };
         let context = VkContext::new(&core, &window).unwrap();
@@ -63,9 +63,9 @@ impl EngineInternals {
         self.render_core.borrow_mut().teardown();
     }
 
-    pub fn record_graphics_commands(
+    pub fn record_graphics_commands<T: Sized>(
         &self,
-        scene: &Box<dyn Scene>
+        scene: &Box<dyn Scene<T>>
     ) -> Result<(), VkError> {
         let context = self.render_context.borrow();
         let resource_manager = self.resource_manager.borrow();
@@ -91,11 +91,11 @@ impl EngineInternals {
         self.last_known_client_area_size
     }
 
-    pub fn recreate_surface(
+    pub fn recreate_surface<T: Sized>(
         &mut self,
         window: &Window,
         new_client_area_size: PhysicalSize<u32>,
-        scene: &Box<dyn Scene>
+        scene: &Box<dyn Scene<T>>
     ) -> Result<(), VkError> {
         // Wait for the device to be idle
         unsafe {
@@ -127,7 +127,7 @@ impl EngineInternals {
         Ok(())
     }
 
-    pub fn render_frame(&mut self, scene: &Box<dyn Scene>) -> Result<PresentResult, VkError> {
+    pub fn render_frame<T: Sized>(&mut self, scene: &Box<dyn Scene<T>>) -> Result<PresentResult, VkError> {
         let mut context = self.render_context.borrow_mut();
         let resource_manager = self.resource_manager.borrow();
         unsafe {

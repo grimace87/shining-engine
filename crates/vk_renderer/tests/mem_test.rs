@@ -7,6 +7,7 @@
 /// objects. Then it tears everything down.
 
 use vk_renderer::{VkCore, VkContext, TextureCodec, ResourceUtilities};
+use model::StaticVertex;
 use window::{
     WindowEventLooper, RenderCycleEvent, RenderEventHandler, ControlFlow, Event, WindowEvent,
     WindowEventHandler, WindowStateEvent, Window, MessageProxy, WindowCommand
@@ -30,7 +31,7 @@ const TERRAIN_TEXTURE_BYTES: &[u8] =
 
 struct ResourceSource {}
 
-impl RawResourceBearer for ResourceSource {
+impl RawResourceBearer<StaticVertex> for ResourceSource {
 
     fn get_model_resource_ids(&self) -> &[u32] { &[VBO_INDEX_SCENE] }
 
@@ -48,7 +49,7 @@ impl RawResourceBearer for ResourceSource {
 
     fn get_pipeline_resource_ids(&self) -> &[u32] { &[] }
 
-    fn get_raw_model_data(&self, id: u32) -> VboCreationData {
+    fn get_raw_model_data(&self, id: u32) -> VboCreationData<StaticVertex> {
         if id != VBO_INDEX_SCENE {
             panic!("Bad model resource ID");
         }
@@ -126,7 +127,7 @@ impl VulkanTestApp {
             // Creation
             let mut core = VkCore::new(window, vec![]).unwrap();
             let mut context = VkContext::new(&core, window).unwrap();
-            let resource_source: Box<dyn RawResourceBearer> = Box::new(ResourceSource {});
+            let resource_source: Box<dyn RawResourceBearer<StaticVertex>> = Box::new(ResourceSource {});
             let mut resource_manager = ResourceManager::new();
             resource_manager.load_static_resources_from(&context, &resource_source).unwrap();
 

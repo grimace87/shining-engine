@@ -6,6 +6,7 @@
 /// This test creates a more-or-less functioning graphics application.
 
 use engine::{Engine, SceneFactory, Scene, StockScene};
+use model::StaticVertex;
 use window::{
     RenderCycleEvent, RenderEventHandler, WindowEventHandler, WindowStateEvent, WindowCommand
 };
@@ -21,8 +22,8 @@ impl RenderEventHandler for EngineTestApp {
     fn on_render_cycle_event(&self, _event: RenderCycleEvent) {}
 }
 
-impl SceneFactory for EngineTestApp {
-    fn get_scene(&self) -> Box<dyn Scene> {
+impl SceneFactory<StaticVertex> for EngineTestApp {
+    fn get_scene(&self) -> Box<dyn Scene<StaticVertex>> {
         Box::new(StockScene::new())
     }
 }

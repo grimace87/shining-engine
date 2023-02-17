@@ -1,5 +1,6 @@
 
 use engine::{Engine, StockScene, SceneFactory, Scene};
+use model::StaticVertex;
 use window::{
     RenderEventHandler, RenderCycleEvent, MessageProxy,
     WindowEventHandler, WindowStateEvent, WindowCommand,
@@ -34,8 +35,8 @@ impl WindowEventHandler<TestAppMessage> for QuitsQuicklyApp {
     fn on_window_custom_event(&mut self, _event: TestAppMessage) {}
 }
 
-impl SceneFactory for QuitsQuicklyApp {
-    fn get_scene(&self) -> Box<dyn Scene> {
+impl SceneFactory<StaticVertex> for QuitsQuicklyApp {
+    fn get_scene(&self) -> Box<dyn Scene<StaticVertex>> {
         Box::new(StockScene::new())
     }
 }

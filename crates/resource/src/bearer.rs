@@ -5,7 +5,7 @@ use crate::{
     PipelineCreationData
 };
 
-pub trait RawResourceBearer {
+pub trait RawResourceBearer<T: Sized> {
 
     fn get_model_resource_ids(&self) -> &[u32];
     fn get_texture_resource_ids(&self) -> &[u32];
@@ -16,7 +16,7 @@ pub trait RawResourceBearer {
     fn get_pipeline_layout_resource_ids(&self) -> &[u32];
     fn get_pipeline_resource_ids(&self) -> &[u32];
 
-    fn get_raw_model_data(&self, id: u32) -> VboCreationData;
+    fn get_raw_model_data(&self, id: u32) -> VboCreationData<T>;
     fn get_raw_texture_data(&self, id: u32) -> TextureCreationData;
     fn get_raw_shader_data(&self, id: u32) -> ShaderCreationData;
     fn get_raw_offscreen_framebuffer_data(&self, id: u32) -> OffscreenFramebufferData;

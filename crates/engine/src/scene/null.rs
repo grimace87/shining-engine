@@ -18,9 +18,9 @@ impl NullScene {
     }
 }
 
-impl Scene for NullScene {
+impl<T: Sized> Scene<T> for NullScene {
 
-    fn get_resource_bearer(&self) -> Box<dyn RawResourceBearer> {
+    fn get_resource_bearer(&self) -> Box<dyn RawResourceBearer<T>> {
         Box::new(NullResourceBearer::new())
     }
 
@@ -53,7 +53,7 @@ impl NullResourceBearer {
     }
 }
 
-impl RawResourceBearer for NullResourceBearer {
+impl<T: Sized> RawResourceBearer<T> for NullResourceBearer {
 
     fn get_model_resource_ids(&self) -> &[u32] { &[] }
 
@@ -71,7 +71,7 @@ impl RawResourceBearer for NullResourceBearer {
 
     fn get_pipeline_resource_ids(&self) -> &[u32] { &[] }
 
-    fn get_raw_model_data(&self, _id: u32) -> VboCreationData {
+    fn get_raw_model_data(&self, _id: u32) -> VboCreationData<T> {
         panic!("No resource data exists");
     }
 

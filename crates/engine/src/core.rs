@@ -7,6 +7,7 @@ use window::{
     RenderEventHandler, WindowEventHandler
 };
 use control::{ControlIo, UserControl};
+use model::StaticVertex;
 use vk_renderer::PresentResult;
 use std::fmt::Debug;
 
@@ -34,7 +35,7 @@ impl<M: 'static + Send + Debug> Engine<M> {
     }
 
     pub fn run<A>(self, app: A) where
-        A: 'static + WindowEventHandler<M> + RenderEventHandler + SceneFactory
+        A: 'static + WindowEventHandler<M> + RenderEventHandler + SceneFactory<StaticVertex>
     {
         // Create the window
         let Some(looper) = &self.looper else {
@@ -47,7 +48,7 @@ impl<M: 'static + Send + Debug> Engine<M> {
     }
 
     fn run_main_loop<A>(mut self, window: Window, mut app: A) where
-        A: 'static + WindowEventHandler<M> + RenderEventHandler + SceneFactory
+        A: 'static + WindowEventHandler<M> + RenderEventHandler + SceneFactory<StaticVertex>
     {
         let Some(looper) = self.looper.take() else {
             panic!("Internal error");

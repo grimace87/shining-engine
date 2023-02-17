@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::ops::Not;
 
 pub struct ResourceManager<L: ResourceLoader> {
-    loaded_models: HashMap<u32, (L::VertexBufferHandle, usize)>,
+    loaded_models: HashMap<u32, L::VertexBufferHandle>,
     loaded_textures: HashMap<u32, L::TextureHandle>,
     loaded_shaders: HashMap<u32, L::ShaderHandle>,
     loaded_offscreen_framebuffers: HashMap<u32, L::OffscreenFramebufferHandle>,
@@ -34,10 +34,10 @@ impl<L: ResourceLoader> ResourceManager<L> {
     /// This includes immutable vertex buffers, textures, and static shaders.
     /// These can still be released any time if no longer needed, but there should be no reason
     /// to do this besides keeping memory usage down.
-    pub fn load_static_resources_from(
+    pub fn load_static_resources_from<T: Sized>(
         &mut self,
         loader: &L,
-        bearer: &Box<dyn RawResourceBearer>
+        bearer: &Box<dyn RawResourceBearer<T>>
     ) -> Result<(), L::LoadError> {
 
         let model_ids = bearer.get_model_resource_ids();
@@ -46,8 +46,8 @@ impl<L: ResourceLoader> ResourceManager<L> {
                 continue;
             }
             let raw_data = bearer.get_raw_model_data(*id);
-            let (model_data, vertex_count) = loader.load_model(&raw_data)?;
-            self.loaded_models.insert(*id, (model_data, vertex_count));
+            let (model_data, _) = loader.load_model(&raw_data)?;
+            self.loaded_models.insert(*id, model_data);
         }
 
         let texture_ids = bearer.get_texture_resource_ids();
@@ -88,10 +88,10 @@ impl<L: ResourceLoader> ResourceManager<L> {
     /// These resources may need to be recreated at any time independent of what the app is doing,
     /// and depends more on the running environment. Recreating the Vulkan swapchain will be an
     /// example of a case where many of these resources will need to be recreated.
-    pub fn load_dynamic_resources_from(
+    pub fn load_dynamic_resources_from<T: Sized>(
         &mut self,
         loader: &L,
-        bearer: &Box<dyn RawResourceBearer>,
+        bearer: &Box<dyn RawResourceBearer<T>>,
         swapchain_size: usize,
         current_swapchain_width: u32,
         current_swapchain_height: u32
@@ -204,7 +204,7 @@ impl<L: ResourceLoader> ResourceManager<L> {
 
     pub fn free_resources(&mut self, loader: &mut L) -> Result<(), L::LoadError> {
 
-        for (_, (handle, _)) in self.loaded_models.iter() {
+        for (_, handle) in self.loaded_models.iter() {
             loader.release_model(handle)?;
         }
         self.loaded_models.clear();
@@ -247,10 +247,10 @@ impl<L: ResourceLoader> ResourceManager<L> {
         Ok(())
     }
 
-    pub fn get_vbo_handle(&self, id: u32) -> Result<(&L::VertexBufferHandle, usize), L::LoadError> {
-        let (model_data, vertex_count) = self.loaded_models.get(&id)
+    pub fn get_vbo_handle(&self, id: u32) -> Result<&L::VertexBufferHandle, L::LoadError> {
+        let model_data = self.loaded_models.get(&id)
             .ok_or_else(|| L::make_error(format!("Error: Model {} is not loaded", id)))?;
-        Ok((model_data, *vertex_count))
+        Ok(model_data)
     }
 
     pub fn get_texture_handle(&self, id: u32) -> Result<&L::TextureHandle, L::LoadError> {

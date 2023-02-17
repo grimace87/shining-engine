@@ -1,6 +1,4 @@
 
-use model::StaticVertex;
-
 /// ImageUsage enum
 /// An enumeration of what purpose buffer resources can be used for
 #[derive(PartialEq, Debug)]
@@ -11,8 +9,8 @@ pub enum BufferUsage {
 
 /// VboCreationData struct
 /// Specification for how a vertex buffer is to be created
-pub struct VboCreationData {
-    pub vertex_data: Vec<StaticVertex>,
+pub struct VboCreationData<T: Sized> {
+    pub vertex_data: Vec<T>,
     pub vertex_count: usize,
     pub draw_indexed: bool,
     pub index_data: Option<Vec<u16>>,

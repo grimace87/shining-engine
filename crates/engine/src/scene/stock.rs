@@ -64,9 +64,9 @@ impl StockScene {
     }
 }
 
-impl Scene for StockScene {
+impl Scene<StaticVertex> for StockScene {
 
-    fn get_resource_bearer(&self) -> Box<dyn RawResourceBearer> {
+    fn get_resource_bearer(&self) -> Box<dyn RawResourceBearer<StaticVertex>> {
         Box::new(StockResourceBearer::new())
     }
 
@@ -141,7 +141,7 @@ impl Scene for StockScene {
             command_buffer, &renderpass_begin_info, vk::SubpassContents::INLINE);
 
         // Bind the pipeline and do rendering work
-        let (vertex_buffer, vertex_count) = resource_manager.get_vbo_handle(0)?;
+        let vertex_buffer = resource_manager.get_vbo_handle(0)?;
         device.cmd_bind_pipeline(
             command_buffer,
             vk::PipelineBindPoint::GRAPHICS,
@@ -160,7 +160,7 @@ impl Scene for StockScene {
             &[]);
         device.cmd_draw(
             command_buffer,
-            vertex_count as u32,
+            (vertex_buffer.size_bytes / std::mem::size_of::<StaticVertex>()) as u32,
             1,
             0,
             0);
@@ -191,7 +191,7 @@ impl Scene for StockScene {
         swapchain_image_index: usize,
         resource_manager: &ResourceManager<VkContext>
     ) -> Result<(), VkError> {
-        let resource_bearer = self.get_resource_bearer();
+        let resource_bearer: Box<dyn RawResourceBearer<StaticVertex>> = self.get_resource_bearer();
         let pipeline_description = resource_bearer
             .get_raw_pipeline_data(0, swapchain_image_index);
         let complex_id = pipeline_description.encode_complex_pipeline_id(0);
@@ -210,7 +210,7 @@ impl StockResourceBearer {
     }
 }
 
-impl RawResourceBearer for StockResourceBearer {
+impl RawResourceBearer<StaticVertex> for StockResourceBearer {
 
     fn get_model_resource_ids(&self) -> &[u32] {
         &[VBO_INDEX_SCENE]
@@ -244,7 +244,7 @@ impl RawResourceBearer for StockResourceBearer {
         &[PIPELINE_INDEX_MAIN]
     }
 
-    fn get_raw_model_data(&self, id: u32) -> VboCreationData {
+    fn get_raw_model_data(&self, id: u32) -> VboCreationData<StaticVertex> {
         if id != VBO_INDEX_SCENE {
             panic!("Bad model resource ID");
         }

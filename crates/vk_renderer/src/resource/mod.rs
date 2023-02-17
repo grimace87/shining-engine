@@ -26,12 +26,16 @@ impl ResourceLoader for VkContext {
     type PipelineHandle = PipelineWrapper;
     type LoadError = VkError;
 
-    fn load_model(&self, raw_data: &VboCreationData) -> Result<(BufferWrapper, usize), VkError> {
+    fn load_model<T: Sized>(
+        &self,
+        raw_data: &VboCreationData<T>
+    ) -> Result<(BufferWrapper, usize), VkError> {
         let buffer = unsafe {
-            BufferWrapper::new::<StaticVertex>(
+            BufferWrapper::new::<T>(
                 self,
                 BufferUsage::InitialiseOnceVertexBuffer,
-                raw_data.vertex_count * std::mem::size_of::<StaticVertex>(), // TODO - different vertex types?
+                raw_data.vertex_count * std::mem::size_of::<T>(),
+                raw_data.vertex_count,
                 Some(&raw_data.vertex_data))?
         };
         Ok((buffer, raw_data.vertex_count))

@@ -52,7 +52,7 @@ struct SomeUniformBuffer {
 
 struct ResourceSource {}
 
-impl RawResourceBearer for ResourceSource {
+impl RawResourceBearer<StaticVertex> for ResourceSource {
 
     fn get_model_resource_ids(&self) -> &[u32] {
         &[VBO_INDEX_SCENE]
@@ -86,7 +86,7 @@ impl RawResourceBearer for ResourceSource {
         &[PIPELINE_INDEX_MAIN]
     }
 
-    fn get_raw_model_data(&self, id: u32) -> VboCreationData {
+    fn get_raw_model_data(&self, id: u32) -> VboCreationData<StaticVertex> {
         if id != VBO_INDEX_SCENE {
             panic!("Bad model resource ID");
         }
@@ -204,7 +204,7 @@ impl VulkanTestApp {
             // Creation of required components
             let mut core = VkCore::new(window, vec![]).unwrap();
             let mut context = VkContext::new(&core, window).unwrap();
-            let resource_source: Box<dyn RawResourceBearer> = Box::new(ResourceSource {});
+            let resource_source: Box<dyn RawResourceBearer<StaticVertex>> = Box::new(ResourceSource {});
             let mut resource_manager = ResourceManager::new();
             let current_extent = context.get_extent().unwrap();
             resource_manager

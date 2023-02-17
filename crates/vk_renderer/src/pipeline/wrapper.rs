@@ -100,7 +100,7 @@ impl PipelineWrapper {
             vec![vertex_shader_stage.build(), fragment_shader_stage.build()];
 
         // Vertex buffer
-        let (vbo_wrapper, vbo_vertex_count) = resource_manager
+        let vbo_wrapper = resource_manager
             .get_vbo_handle(vbo_index as u32)?;
         let vbo_handle = vbo_wrapper.buffer;
 
@@ -145,6 +145,7 @@ impl PipelineWrapper {
                 context,
                 BufferUsage::UniformBuffer,
                 ubo_size_bytes,
+                1,
                 Some(&uniform_buffer_data))?;
             buffer
         };
@@ -293,7 +294,7 @@ impl PipelineWrapper {
             )?;
 
         self.vertex_buffer = vbo_handle;
-        self.vertex_count = vbo_vertex_count;
+        self.vertex_count = vbo_wrapper.element_count;
         self.uniform_buffer = uniform_buffer;
         self.texture_image_view = texture_image_view; // TODO - Vec
         self.sampler = sampler; // TODO - Vec

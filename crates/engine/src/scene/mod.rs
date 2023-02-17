@@ -5,14 +5,14 @@ use vk_renderer::{VkError, VkContext};
 use resource::{RawResourceBearer, ResourceManager};
 use ash::{Device, vk};
 
-pub trait SceneFactory {
-    fn get_scene(&self) -> Box<dyn Scene>;
+pub trait SceneFactory<T: Sized> {
+    fn get_scene(&self) -> Box<dyn Scene<T>>;
 }
 
-pub trait Scene {
+pub trait Scene<T: Sized> {
 
     /// Build an object that bears resources
-    fn get_resource_bearer(&self) -> Box<dyn RawResourceBearer>;
+    fn get_resource_bearer(&self) -> Box<dyn RawResourceBearer<T>>;
 
     /// Record commands once such that they can be executed later once per frame
     unsafe fn record_commands(

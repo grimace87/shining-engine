@@ -17,9 +17,9 @@ pub trait ResourceLoader where Self: Sized {
     type PipelineHandle;
     type LoadError;
 
-    fn load_model(
+    fn load_model<T: Sized>(
         &self,
-        raw_data: &VboCreationData
+        raw_data: &VboCreationData<T>
     ) -> Result<(Self::VertexBufferHandle, usize), Self::LoadError>;
     fn release_model(
         &mut self,
