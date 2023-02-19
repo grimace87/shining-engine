@@ -1,9 +1,5 @@
 
-use resource::{
-    DescriptorSetLayoutCreationData, OffscreenFramebufferData, PipelineCreationData,
-    PipelineLayoutCreationData, RawResourceBearer, RenderpassCreationData, ResourceManager,
-    ShaderCreationData, TextureCreationData, VboCreationData
-};
+use resource::{RawResourceBearer, ResourceManager};
 use vk_renderer::{VkContext, VkError};
 use ash::{Device, vk};
 use crate::Scene;
@@ -18,9 +14,9 @@ impl NullScene {
     }
 }
 
-impl<T: Sized> Scene<T> for NullScene {
+impl Scene<VkContext> for NullScene {
 
-    fn get_resource_bearer(&self) -> Box<dyn RawResourceBearer<T>> {
+    fn get_resource_bearer(&self) -> Box<dyn RawResourceBearer<VkContext>> {
         Box::new(NullResourceBearer::new())
     }
 
@@ -53,53 +49,22 @@ impl NullResourceBearer {
     }
 }
 
-impl<T: Sized> RawResourceBearer<T> for NullResourceBearer {
+impl RawResourceBearer<VkContext> for NullResourceBearer {
 
-    fn get_model_resource_ids(&self) -> &[u32] { &[] }
-
-    fn get_texture_resource_ids(&self) -> &[u32] { &[] }
-
-    fn get_shader_resource_ids(&self) -> &[u32] { &[] }
-
-    fn get_offscreen_framebuffer_resource_ids(&self) -> &[u32] { &[] }
-
-    fn get_renderpass_resource_ids(&self) -> &[u32] { &[] }
-
-    fn get_descriptor_set_layout_resource_ids(&self) -> &[u32] { &[] }
-
-    fn get_pipeline_layout_resource_ids(&self) -> &[u32] { &[] }
-
-    fn get_pipeline_resource_ids(&self) -> &[u32] { &[] }
-
-    fn get_raw_model_data(&self, _id: u32) -> VboCreationData<T> {
-        panic!("No resource data exists");
+    fn initialise_static_resources(
+        &self,
+        _manager: &mut ResourceManager<VkContext>,
+        _loader: &VkContext
+    ) -> Result<(), VkError> {
+        Ok(())
     }
 
-    fn get_raw_texture_data(&self, _id: u32) -> TextureCreationData {
-        panic!("No resource data exists");
-    }
-
-    fn get_raw_shader_data(&self, _id: u32) -> ShaderCreationData {
-        panic!("No resource data exists");
-    }
-
-    fn get_raw_offscreen_framebuffer_data(&self, _id: u32) -> OffscreenFramebufferData {
-        panic!("No resource data exists");
-    }
-
-    fn get_raw_renderpass_data(&self, _id: u32, _swapchain_image_index: usize) -> RenderpassCreationData {
-        panic!("No resource data exists");
-    }
-
-    fn get_raw_descriptor_set_layout_data(&self, _id: u32) -> DescriptorSetLayoutCreationData {
-        panic!("No resource data exists");
-    }
-
-    fn get_raw_pipeline_layout_data(&self, _id: u32) -> PipelineLayoutCreationData {
-        panic!("No resource data exists");
-    }
-
-    fn get_raw_pipeline_data(&self, _id: u32, _swapchain_image_index: usize) -> PipelineCreationData {
-        panic!("No resource data exists");
+    fn reload_dynamic_resources(
+        &self,
+        _manager: &mut ResourceManager<VkContext>,
+        _loader: &mut VkContext,
+        _swapchain_image_count: usize
+    ) -> Result<(), VkError> {
+        Ok(())
     }
 }

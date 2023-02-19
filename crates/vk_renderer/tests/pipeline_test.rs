@@ -6,7 +6,7 @@
 /// The test creates a window, creates a VkCore and a VkContext, and then creates a some pipeline
 /// objects. Then it tears everything down.
 
-use vk_renderer::{VkCore, VkContext, TextureCodec, ResourceUtilities};
+use vk_renderer::{VkCore, VkContext, VkError, TextureCodec, ResourceUtilities};
 use window::{
     WindowEventLooper, RenderCycleEvent, RenderEventHandler, ControlFlow, Event, WindowEvent,
     WindowEventHandler, WindowStateEvent, Window, MessageProxy, WindowCommand
@@ -16,10 +16,11 @@ use vk_shader_macros::include_glsl;
 
 use model::{COLLADA, Config, StaticVertex};
 use resource::{
-    ResourceManager, BufferUsage, ImageUsage, VboCreationData, TextureCreationData,
+    ResourceManager, BufferUsage, ImageUsage, VboCreationData,
     RawResourceBearer, ShaderCreationData, ShaderStage, RenderpassCreationData,
     DescriptorSetLayoutCreationData, PipelineLayoutCreationData, PipelineCreationData,
-    RenderpassTarget, UboUsage, OffscreenFramebufferData
+    RenderpassTarget, UboUsage, ResourceLoader, Handle,
+    HandleInterface
 };
 
 const VBO_INDEX_SCENE: u32 = 0;
@@ -52,140 +53,117 @@ struct SomeUniformBuffer {
 
 struct ResourceSource {}
 
-impl RawResourceBearer<StaticVertex> for ResourceSource {
+impl RawResourceBearer<VkContext> for ResourceSource {
 
-    fn get_model_resource_ids(&self) -> &[u32] {
-        &[VBO_INDEX_SCENE]
-    }
+    fn initialise_static_resources(
+        &self,
+        manager: &mut ResourceManager<VkContext>,
+        loader: &VkContext
+    ) -> Result<(), VkError> {
 
-    fn get_texture_resource_ids(&self) -> &[u32] {
-        &[TEXTURE_INDEX_TERRAIN]
-    }
-
-    fn get_shader_resource_ids(&self) -> &[u32] {
-        &[SHADER_INDEX_VERTEX, SHADER_INDEX_FRAGMENT]
-    }
-
-    fn get_offscreen_framebuffer_resource_ids(&self) -> &[u32] {
-        &[]
-    }
-
-    fn get_renderpass_resource_ids(&self) -> &[u32] {
-        &[RENDERPASS_INDEX_MAIN]
-    }
-
-    fn get_descriptor_set_layout_resource_ids(&self) -> &[u32] {
-        &[DESCRIPTOR_SET_LAYOUT_INDEX_MAIN]
-    }
-
-    fn get_pipeline_layout_resource_ids(&self) -> &[u32] {
-        &[PIPELINE_LAYOUT_INDEX_MAIN]
-    }
-
-    fn get_pipeline_resource_ids(&self) -> &[u32] {
-        &[PIPELINE_INDEX_MAIN]
-    }
-
-    fn get_raw_model_data(&self, id: u32) -> VboCreationData<StaticVertex> {
-        if id != VBO_INDEX_SCENE {
-            panic!("Bad model resource ID");
-        }
         let scene_model = {
             let collada = COLLADA::new(&SCENE_MODEL_BYTES);
             let mut models = collada.extract_models(Config::default());
             models.remove(0)
         };
         let scene_vertex_count = scene_model.vertices.len();
-        VboCreationData {
+        let creation_data = VboCreationData {
             vertex_data: scene_model.vertices,
             vertex_count: scene_vertex_count,
             draw_indexed: false,
             index_data: None,
             usage: BufferUsage::InitialiseOnceVertexBuffer
-        }
-    }
+        };
+        let vertex_buffer = loader.load_model(&creation_data)?;
+        manager.push_new_with_handle(
+            Handle::from_parts(VBO_INDEX_SCENE, 0),
+            vertex_buffer);
 
-    fn get_raw_texture_data(&self, id: u32) -> TextureCreationData {
-        if id != TEXTURE_INDEX_TERRAIN {
-            panic!("Bad texture resource ID");
-        }
-        ResourceUtilities::decode_texture(
+        let creation_data = ResourceUtilities::decode_texture(
             TERRAIN_TEXTURE_BYTES,
             TextureCodec::Jpeg,
             ImageUsage::TextureSampleOnly)
-            .unwrap()
+            .unwrap();
+        let texture = loader.load_texture(&creation_data)?;
+        manager.push_new_with_handle(
+            Handle::from_parts(TEXTURE_INDEX_TERRAIN, 0),
+            texture);
+
+        let creation_data = ShaderCreationData {
+            data: VERTEX_SHADER,
+            stage: ShaderStage::Vertex
+        };
+        let vertex_shader = loader.load_shader(&creation_data)?;
+        manager.push_new_with_handle(
+            Handle::from_parts(SHADER_INDEX_VERTEX, 0),
+            vertex_shader);
+
+        let creation_data = ShaderCreationData {
+            data: FRAGMENT_SHADER,
+            stage: ShaderStage::Fragment
+        };
+        let fragment_shader = loader.load_shader(&creation_data)?;
+        manager.push_new_with_handle(
+            Handle::from_parts(SHADER_INDEX_FRAGMENT, 0),
+            fragment_shader);
+
+        Ok(())
     }
 
-    fn get_raw_shader_data(&self, id: u32) -> ShaderCreationData {
-        match id {
-            SHADER_INDEX_VERTEX => ShaderCreationData {
-                data: VERTEX_SHADER,
-                stage: ShaderStage::Vertex
-            },
-            SHADER_INDEX_FRAGMENT => ShaderCreationData {
-                data: FRAGMENT_SHADER,
-                stage: ShaderStage::Fragment
-            },
-            _ => panic!("Bad texture resource ID")
-        }
-    }
-
-    fn get_raw_offscreen_framebuffer_data(&self, _id: u32) -> OffscreenFramebufferData {
-        panic!("Bad offscreen framebuffer resource ID");
-    }
-
-    fn get_raw_renderpass_data(
+    fn reload_dynamic_resources(
         &self,
-        id: u32,
-        swapchain_image_index: usize
-    ) -> RenderpassCreationData {
-        if id != RENDERPASS_INDEX_MAIN {
-            panic!("Bad renderpass resource ID");
-        }
-        RenderpassCreationData {
-            target: RenderpassTarget::SwapchainImageWithDepth,
-            swapchain_image_index
-        }
-    }
+        manager: &mut ResourceManager<VkContext>,
+        loader: &mut VkContext,
+        swapchain_image_count: usize
+    ) -> Result<(), VkError> {
 
-    fn get_raw_descriptor_set_layout_data(&self, id: u32) -> DescriptorSetLayoutCreationData {
-        if id != DESCRIPTOR_SET_LAYOUT_INDEX_MAIN {
-            panic!("Bad descriptor set layout resource ID");
+        for i in 0..swapchain_image_count {
+            let creation_data = RenderpassCreationData {
+                target: RenderpassTarget::SwapchainImageWithDepth,
+                swapchain_image_index: i
+            };
+            let renderpass = loader.load_renderpass(&creation_data, &manager)?;
+            manager.push_new_with_handle(
+                Handle::from_parts(RENDERPASS_INDEX_MAIN, i as u32),
+                renderpass);
         }
-        DescriptorSetLayoutCreationData {
+
+        let creation_data = DescriptorSetLayoutCreationData {
             ubo_usage: UboUsage::VertexShaderRead
-        }
-    }
+        };
+        let descriptor_set_layout = loader.load_descriptor_set_layout(&creation_data)?;
+        manager.push_new_with_handle(
+            Handle::from_parts(DESCRIPTOR_SET_LAYOUT_INDEX_MAIN, 0),
+            descriptor_set_layout);
 
-    fn get_raw_pipeline_layout_data(&self, id: u32) -> PipelineLayoutCreationData {
-        if id != PIPELINE_LAYOUT_INDEX_MAIN {
-            panic!("Bad pipeline layout resource ID");
-        }
-        PipelineLayoutCreationData {
+        let creation_data = PipelineLayoutCreationData {
             descriptor_set_layout_index: DESCRIPTOR_SET_LAYOUT_INDEX_MAIN
-        }
-    }
+        };
+        let pipeline_layout = loader.load_pipeline_layout(&creation_data, &manager)?;
+        manager.push_new_with_handle(
+            Handle::from_parts(PIPELINE_LAYOUT_INDEX_MAIN, 0),
+            pipeline_layout);
 
-    fn get_raw_pipeline_data(
-        &self,
-        id: u32,
-        swapchain_image_index: usize
-    ) -> PipelineCreationData {
-        if id != PIPELINE_INDEX_MAIN {
-            panic!("Bad pipeline resource ID");
+        for i in 0..swapchain_image_count {
+            let creation_data = PipelineCreationData {
+                pipeline_layout_index: PIPELINE_LAYOUT_INDEX_MAIN,
+                renderpass_index: RENDERPASS_INDEX_MAIN,
+                descriptor_set_layout_id: DESCRIPTOR_SET_LAYOUT_INDEX_MAIN,
+                vertex_shader_index: SHADER_INDEX_VERTEX,
+                fragment_shader_index: SHADER_INDEX_FRAGMENT,
+                vbo_index: VBO_INDEX_SCENE,
+                texture_index: TEXTURE_INDEX_TERRAIN,
+                vbo_stride_bytes: std::mem::size_of::<StaticVertex>() as u32,
+                ubo_size_bytes: std::mem::size_of::<SomeUniformBuffer>(),
+                swapchain_image_index: i
+            };
+            let pipeline = loader.load_pipeline(&creation_data, &manager, i)?;
+            manager.push_new_with_handle(
+                Handle::from_parts(PIPELINE_INDEX_MAIN, i as u32),
+                pipeline);
         }
-        PipelineCreationData {
-            pipeline_layout_index: PIPELINE_LAYOUT_INDEX_MAIN,
-            renderpass_index: RENDERPASS_INDEX_MAIN,
-            descriptor_set_layout_id: DESCRIPTOR_SET_LAYOUT_INDEX_MAIN,
-            vertex_shader_index: SHADER_INDEX_VERTEX,
-            fragment_shader_index: SHADER_INDEX_FRAGMENT,
-            vbo_index: VBO_INDEX_SCENE,
-            texture_index: TEXTURE_INDEX_TERRAIN,
-            vbo_stride_bytes: std::mem::size_of::<StaticVertex>() as u32,
-            ubo_size_bytes: std::mem::size_of::<SomeUniformBuffer>(),
-            swapchain_image_index
-        }
+
+        Ok(())
     }
 }
 
@@ -204,25 +182,21 @@ impl VulkanTestApp {
             // Creation of required components
             let mut core = VkCore::new(window, vec![]).unwrap();
             let mut context = VkContext::new(&core, window).unwrap();
-            let resource_source: Box<dyn RawResourceBearer<StaticVertex>> = Box::new(ResourceSource {});
+            let resource_source: Box<dyn RawResourceBearer<VkContext>> = Box::new(ResourceSource {});
             let mut resource_manager = ResourceManager::new();
-            let current_extent = context.get_extent().unwrap();
-            resource_manager
-                .load_static_resources_from(
-                    &context,
-                    &resource_source)
+            let swapchain_image_count = context.get_swapchain_image_count();
+            resource_source
+                .initialise_static_resources(&mut resource_manager, &context)
                 .unwrap();
-            resource_manager
-                .load_dynamic_resources_from(
-                    &context,
-                    &resource_source,
-                    context.get_swapchain_image_count(),
-                    current_extent.width,
-                    current_extent.height)
+            resource_source
+                .reload_dynamic_resources(
+                    &mut resource_manager,
+                    &mut context,
+                    swapchain_image_count)
                 .unwrap();
 
             // Release
-            resource_manager.free_resources(&mut context).unwrap();
+            resource_manager.free_all_resources(&context).unwrap();
             context.teardown();
             core.teardown();
         }

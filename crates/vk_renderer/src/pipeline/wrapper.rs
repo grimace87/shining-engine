@@ -1,6 +1,6 @@
 
-use crate::{VkContext, VkError, BufferWrapper};
-use resource::{ResourceManager, BufferUsage};
+use crate::{VkContext, VkError, BufferWrapper, RenderpassWrapper, ImageWrapper};
+use resource::{ResourceManager, BufferUsage, Resource, Handle, HandleInterface};
 use ash::vk;
 use std::ffi::CString;
 
@@ -16,6 +16,17 @@ pub struct PipelineWrapper {
     descriptor_pool: vk::DescriptorPool,
     descriptor_set: vk::DescriptorSet,
     pipeline: vk::Pipeline
+}
+
+impl Resource<VkContext> for PipelineWrapper {
+    fn release(&self, loader: &VkContext) {
+        unsafe {
+            loader.device.destroy_pipeline(self.pipeline, None);
+            self.uniform_buffer.release(loader);
+            loader.device.destroy_descriptor_pool(self.descriptor_pool, None);
+            loader.device.destroy_sampler(self.sampler, None);
+        }
+    }
 }
 
 impl PipelineWrapper {
@@ -34,17 +45,6 @@ impl PipelineWrapper {
         }
     }
 
-    /// Destroy the resources held by this instance
-    pub fn destroy_resources(&self, context: &VkContext) {
-        let (allocator, _) = context.get_mem_allocator();
-        unsafe {
-            context.device.destroy_pipeline(self.pipeline, None);
-            self.uniform_buffer.destroy(allocator).unwrap();
-            context.device.destroy_descriptor_pool(self.descriptor_pool, None);
-            context.device.destroy_sampler(self.sampler, None);
-        }
-    }
-
     pub fn get_pipeline(&self) -> vk::Pipeline {
         self.pipeline
     }
@@ -58,7 +58,8 @@ impl PipelineWrapper {
         &mut self,
         context: &VkContext,
         resource_manager: &ResourceManager<VkContext>,
-        complex_renderpass_id: u64,
+        swapchain_image_index: usize,
+        renderpass_id: u32,
         descriptor_set_layout_id: u32,
         pipeline_layout_index: u32,
         vertex_shader_index: u32,
@@ -74,17 +75,27 @@ impl PipelineWrapper {
 
         // Query renderpass and pipeline layout
         let renderpass_wrapper = resource_manager
-            .get_renderpass_handle(complex_renderpass_id)?;
+            .get_item::<RenderpassWrapper>(
+                Handle::from_parts(renderpass_id, swapchain_image_index as u32))
+            .unwrap();
         let descriptor_set_layout = resource_manager
-            .get_descriptor_set_layout_handle(descriptor_set_layout_id)?;
+            .get_item::<vk::DescriptorSetLayout>(
+                Handle::from_parts(descriptor_set_layout_id, 0))
+            .unwrap();
         let pipeline_layout = resource_manager
-            .get_pipeline_layout_handle(pipeline_layout_index)?;
+            .get_item::<vk::PipelineLayout>(
+                Handle::from_parts(pipeline_layout_index, 0))
+            .unwrap();
 
         // Query shader modules
         let vertex_shader_module = resource_manager
-            .get_shader_handle(vertex_shader_index as u32)?;
+            .get_item::<vk::ShaderModule>(
+                Handle::from_parts(vertex_shader_index as u32, 0))
+            .unwrap();
         let fragment_shader_module = resource_manager
-            .get_shader_handle(fragment_shader_index as u32)?;
+            .get_item::<vk::ShaderModule>(
+                Handle::from_parts(fragment_shader_index as u32, 0))
+            .unwrap();
 
         // Make shader modules
         let main_function_name = CString::new("main").unwrap();
@@ -101,7 +112,9 @@ impl PipelineWrapper {
 
         // Vertex buffer
         let vbo_wrapper = resource_manager
-            .get_vbo_handle(vbo_index as u32)?;
+            .get_item::<BufferWrapper>(
+                Handle::from_parts(vbo_index as u32, 0))
+            .unwrap();
         let vbo_handle = vbo_wrapper.buffer;
 
         // Vertex input configuration
@@ -152,8 +165,10 @@ impl PipelineWrapper {
 
         // Texture image
         //TODO - Vec from texture_indices.iter().map(|index| ...).collect()
-        let texture_image_view: vk::ImageView = resource_manager
-            .get_texture_handle(texture_index as u32)?
+        let texture_image_view = resource_manager
+            .get_item::<ImageWrapper>(
+                Handle::from_parts(texture_index as u32, 0))
+            .unwrap()
             .image_view;
 
         // Samplers

@@ -1,7 +1,7 @@
 
 use crate::{VkError, VkContext};
 use crate::mem::{MemoryAllocator, MemoryAllocation, ManagesBufferMemory};
-use resource::BufferUsage;
+use resource::{BufferUsage, Resource};
 use ash::vk;
 
 /// BufferCreationParams struct
@@ -18,6 +18,20 @@ pub struct BufferWrapper {
     pub size_bytes: usize,
     pub element_count: usize,
     allocation: MemoryAllocation
+}
+
+
+impl Resource<VkContext> for BufferWrapper {
+    fn release(&self, loader: &VkContext) {
+        let (allocator, _) = loader.get_mem_allocator();
+        unsafe {
+            allocator.destroy_buffer(self.buffer, &self.allocation)
+                .map_err(|e| {
+                    VkError::OpFailed(format!("Error freeing buffer: {:?}", e))
+                })
+                .unwrap();
+        }
+    }
 }
 
 impl BufferWrapper {
@@ -79,14 +93,6 @@ impl BufferWrapper {
             element_count: 0,
             allocation: MemoryAllocation::null()
         }
-    }
-
-    /// Clean up the contained resources
-    pub unsafe fn destroy(&self, allocator: &MemoryAllocator) -> Result<(), VkError> {
-        allocator.destroy_buffer(self.buffer, &self.allocation)
-            .map_err(|e| {
-                VkError::OpFailed(format!("Error freeing buffer: {:?}", e))
-            })
     }
 
     /// Map the backed memory, then update it from a host-owned pointer

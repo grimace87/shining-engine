@@ -6,7 +6,7 @@
 /// This test creates a more-or-less functioning graphics application.
 
 use engine::{Engine, SceneFactory, Scene, StockScene};
-use model::StaticVertex;
+use vk_renderer::VkContext;
 use window::{
     RenderCycleEvent, RenderEventHandler, WindowEventHandler, WindowStateEvent, WindowCommand
 };
@@ -22,8 +22,8 @@ impl RenderEventHandler for EngineTestApp {
     fn on_render_cycle_event(&self, _event: RenderCycleEvent) {}
 }
 
-impl SceneFactory<StaticVertex> for EngineTestApp {
-    fn get_scene(&self) -> Box<dyn Scene<StaticVertex>> {
+impl SceneFactory<VkContext> for EngineTestApp {
+    fn get_scene(&self) -> Box<dyn Scene<VkContext>> {
         Box::new(StockScene::new())
     }
 }

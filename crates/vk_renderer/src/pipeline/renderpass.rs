@@ -1,6 +1,6 @@
 
 use crate::{VkContext, VkError, OffscreenFramebufferWrapper};
-use resource::TexturePixelFormat;
+use resource::{TexturePixelFormat, Resource};
 use ash::vk;
 
 /// RenderpassWrapper struct
@@ -10,6 +10,18 @@ pub struct RenderpassWrapper {
     pub renderpass: vk::RenderPass,
     pub swapchain_framebuffer: vk::Framebuffer,
     pub custom_framebuffer: Option<vk::Framebuffer>
+}
+
+impl Resource<VkContext> for RenderpassWrapper {
+    fn release(&self, loader: &VkContext) {
+        unsafe {
+            loader.device.destroy_framebuffer(self.swapchain_framebuffer, None);
+            if let Some(framebuffer) = self.custom_framebuffer.as_ref() {
+                loader.device.destroy_framebuffer(*framebuffer, None);
+            }
+            loader.device.destroy_render_pass(self.renderpass, None);
+        }
+    }
 }
 
 impl RenderpassWrapper {
@@ -49,17 +61,6 @@ impl RenderpassWrapper {
                 true)?;
         }
         Ok(wrapper)
-    }
-
-    /// Destroy the resources held
-    pub fn destroy_resources(&self, context: &VkContext) {
-        unsafe {
-            context.device.destroy_framebuffer(self.swapchain_framebuffer, None);
-            if let Some(framebuffer) = self.custom_framebuffer.as_ref() {
-                context.device.destroy_framebuffer(*framebuffer, None);
-            }
-            context.device.destroy_render_pass(self.renderpass, None);
-        }
     }
 
     /// Create all resources for rendering into a swapchain image

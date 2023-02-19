@@ -2,17 +2,17 @@ pub mod null;
 pub mod stock;
 
 use vk_renderer::{VkError, VkContext};
-use resource::{RawResourceBearer, ResourceManager};
+use resource::{RawResourceBearer, ResourceManager, ResourceLoader};
 use ash::{Device, vk};
 
-pub trait SceneFactory<T: Sized> {
-    fn get_scene(&self) -> Box<dyn Scene<T>>;
+pub trait SceneFactory<L: ResourceLoader> {
+    fn get_scene(&self) -> Box<dyn Scene<L>>;
 }
 
-pub trait Scene<T: Sized> {
+pub trait Scene<L: ResourceLoader> {
 
     /// Build an object that bears resources
-    fn get_resource_bearer(&self) -> Box<dyn RawResourceBearer<T>>;
+    fn get_resource_bearer(&self) -> Box<dyn RawResourceBearer<L>>;
 
     /// Record commands once such that they can be executed later once per frame
     unsafe fn record_commands(
@@ -20,7 +20,7 @@ pub trait Scene<T: Sized> {
         device: &Device,
         command_buffer: vk::CommandBuffer,
         render_extent: vk::Extent2D,
-        resource_manager: &ResourceManager<VkContext>,
+        resource_manager: &ResourceManager<L>,
         swapchain_image_index: usize
     ) -> Result<(), VkError>;
 
@@ -32,6 +32,6 @@ pub trait Scene<T: Sized> {
         &self,
         context: &VkContext,
         swapchain_image_index: usize,
-        resource_manager: &ResourceManager<VkContext>
+        resource_manager: &ResourceManager<L>
     ) -> Result<(), VkError>;
 }

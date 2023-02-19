@@ -6,13 +6,37 @@ use crate::{
     BufferWrapper, ImageWrapper, RenderpassWrapper, PipelineWrapper, VkError, VkContext,
     OffscreenFramebufferWrapper
 };
-use model::StaticVertex;
 use resource::{
     ResourceLoader, BufferUsage, VboCreationData, TextureCreationData, ShaderCreationData,
     RenderpassCreationData, RenderpassTarget, PipelineCreationData, ResourceManager,
-    PipelineLayoutCreationData, DescriptorSetLayoutCreationData, UboUsage, OffscreenFramebufferData
+    PipelineLayoutCreationData, DescriptorSetLayoutCreationData, UboUsage, OffscreenFramebufferData,
+    Handle, HandleInterface, Resource
 };
 use ash::vk;
+
+impl Resource<VkContext> for vk::ShaderModule {
+    fn release(&self, loader: &VkContext) {
+        unsafe {
+            loader.device.destroy_shader_module(*self, None);
+        }
+    }
+}
+
+impl Resource<VkContext> for vk::DescriptorSetLayout {
+    fn release(&self, loader: &VkContext) {
+        unsafe {
+            loader.device.destroy_descriptor_set_layout(*self, None);
+        }
+    }
+}
+
+impl Resource<VkContext> for vk::PipelineLayout {
+    fn release(&self, loader: &VkContext) {
+        unsafe {
+            loader.device.destroy_pipeline_layout(*self, None);
+        }
+    }
+}
 
 impl ResourceLoader for VkContext {
 
@@ -26,10 +50,15 @@ impl ResourceLoader for VkContext {
     type PipelineHandle = PipelineWrapper;
     type LoadError = VkError;
 
+    fn get_current_swapchain_extent(&self) -> Result<(u32, u32), VkError> {
+        let extent = self.get_extent()?;
+        Ok((extent.width, extent.height))
+    }
+
     fn load_model<T: Sized>(
         &self,
         raw_data: &VboCreationData<T>
-    ) -> Result<(BufferWrapper, usize), VkError> {
+    ) -> Result<BufferWrapper, VkError> {
         let buffer = unsafe {
             BufferWrapper::new::<T>(
                 self,
@@ -38,14 +67,7 @@ impl ResourceLoader for VkContext {
                 raw_data.vertex_count,
                 Some(&raw_data.vertex_data))?
         };
-        Ok((buffer, raw_data.vertex_count))
-    }
-
-    fn release_model(&mut self, model: &BufferWrapper) -> Result<(), VkError> {
-        unsafe {
-            let (allocator, _) = self.get_mem_allocator();
-            model.destroy(allocator)
-        }
+        Ok(buffer)
     }
 
     fn load_texture(&self, raw_data: &TextureCreationData) -> Result<ImageWrapper, VkError> {
@@ -72,13 +94,6 @@ impl ResourceLoader for VkContext {
         Ok(texture)
     }
 
-    fn release_texture(&mut self, texture: &ImageWrapper) -> Result<(), VkError> {
-        unsafe {
-            let (allocator, _) = self.get_mem_allocator();
-            texture.destroy(&self.device, allocator)
-        }
-    }
-
     fn load_shader(&self, raw_data: &ShaderCreationData) -> Result<vk::ShaderModule, VkError> {
         unsafe {
             let shader_create_info = vk::ShaderModuleCreateInfo::builder()
@@ -87,13 +102,6 @@ impl ResourceLoader for VkContext {
                 .create_shader_module(&shader_create_info, None)
                 .map_err(|e| VkError::OpFailed(format!("{:?}", e)))
         }
-    }
-
-    fn release_shader(&mut self, shader: &vk::ShaderModule) -> Result<(), VkError> {
-        unsafe {
-            self.device.destroy_shader_module(*shader, None);
-        }
-        Ok(())
     }
 
     fn load_offscreen_framebuffer(
@@ -111,16 +119,6 @@ impl ResourceLoader for VkContext {
         Ok(framebuffer)
     }
 
-    fn release_offscreen_framebuffer(
-        &mut self,
-        framebuffer: &OffscreenFramebufferWrapper
-    ) -> Result<(), VkError> {
-        unsafe {
-            framebuffer.destroy(self)?;
-        }
-        Ok(())
-    }
-
     fn load_renderpass(
         &self,
         raw_data: &RenderpassCreationData,
@@ -135,21 +133,15 @@ impl ResourceLoader for VkContext {
             },
             RenderpassTarget::OffscreenImageWithDepth(framebuffer_index, _, _) => {
                 let framebuffer = resource_manager
-                    .get_offscreen_framebuffer_handle(framebuffer_index)?;
+                    .get_item::<OffscreenFramebufferWrapper>(
+                        Handle::from_parts(framebuffer_index, 0))
+                    .unwrap();
                 let renderpass = RenderpassWrapper::new_with_offscreen_target(
                     self,
                     &framebuffer)?;
                 Ok(renderpass)
             }
         }
-    }
-
-    fn release_renderpass(
-        &mut self,
-        renderpass: &RenderpassWrapper
-    ) -> Result<(), VkError> {
-        renderpass.destroy_resources(self);
-        Ok(())
     }
 
     fn load_descriptor_set_layout(
@@ -190,24 +182,15 @@ impl ResourceLoader for VkContext {
         Ok(descriptor_set_layout)
     }
 
-    fn release_descriptor_set_layout(
-        &mut self,
-        descriptor_set_layout: &vk::DescriptorSetLayout
-    ) -> Result<(), VkError> {
-        unsafe {
-            self.device
-                .destroy_descriptor_set_layout(*descriptor_set_layout, None);
-        }
-        Ok(())
-    }
-
     fn load_pipeline_layout(
         &self,
         raw_data: &PipelineLayoutCreationData,
         resource_manager: &ResourceManager<VkContext>
     ) -> Result<vk::PipelineLayout, VkError> {
         let descriptor_set_layout = resource_manager
-            .get_descriptor_set_layout_handle(raw_data.descriptor_set_layout_index)?;
+            .get_item::<vk::DescriptorSetLayout>(
+                Handle::from_parts(raw_data.descriptor_set_layout_index, 0))
+            .unwrap();
         let pipeline_descriptor_layouts = [*descriptor_set_layout];
         let pipeline_layout_info = vk::PipelineLayoutCreateInfo::builder()
             .set_layouts(&pipeline_descriptor_layouts);
@@ -219,33 +202,12 @@ impl ResourceLoader for VkContext {
         Ok(pipeline_layout)
     }
 
-    fn release_pipeline_layout(
-        &mut self,
-        pipeline_layout: &vk::PipelineLayout
-    ) -> Result<(), VkError> {
-        unsafe {
-            self.device.destroy_pipeline_layout(*pipeline_layout, None);
-        }
-        Ok(())
-    }
-
     fn load_pipeline(
         &self,
         raw_data: &PipelineCreationData,
         resource_manager: &ResourceManager<VkContext>,
-        current_swapchain_width: u32,
-        current_swapchain_height: u32
+        swapchain_image_index: usize
     ) -> Result<PipelineWrapper, VkError> {
-
-        let renderpass_spec = RenderpassCreationData {
-            target: RenderpassTarget::SwapchainImageWithDepth,
-            swapchain_image_index: raw_data.swapchain_image_index
-        };
-        let complex_renderpass_id = renderpass_spec.encode_complex_renderpass_id(
-            raw_data.renderpass_index,
-            current_swapchain_width,
-            current_swapchain_height
-        );
 
         let render_extent = self.get_extent()?;
         let mut pipeline = PipelineWrapper::new();
@@ -253,7 +215,8 @@ impl ResourceLoader for VkContext {
             pipeline.create_resources(
                 self,
                 resource_manager,
-                complex_renderpass_id,
+                swapchain_image_index,
+                raw_data.renderpass_index,
                 raw_data.descriptor_set_layout_id,
                 raw_data.pipeline_layout_index,
                 raw_data.vbo_index,
@@ -268,14 +231,6 @@ impl ResourceLoader for VkContext {
             )?;
         }
         Ok(pipeline)
-    }
-
-    fn release_pipeline(
-        &mut self,
-        pipeline: &PipelineWrapper
-    ) -> Result<(), VkError> {
-        pipeline.destroy_resources(self);
-        Ok(())
     }
 
     #[inline]

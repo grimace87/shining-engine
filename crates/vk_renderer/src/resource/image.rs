@@ -2,13 +2,10 @@
 use crate::{
     VkError,
     context::VkContext,
-    mem::{MemoryAllocator, MemoryAllocation, ManagesImageMemory}
+    mem::{MemoryAllocation, ManagesImageMemory}
 };
-use resource::{ImageUsage, TexturePixelFormat};
-use ash::{
-    vk,
-    Device
-};
+use resource::{ImageUsage, TexturePixelFormat, Resource};
+use ash::vk;
 
 /// ImageCreationParams struct
 /// Description for creating an image; should cover all use cases needed by the engine
@@ -31,6 +28,16 @@ pub struct ImageWrapper {
     pub image: vk::Image,
     pub image_view: vk::ImageView,
     pub format: vk::Format
+}
+
+impl Resource<VkContext> for ImageWrapper {
+    fn release(&self, loader: &VkContext) {
+        let (allocator, _) = loader.get_mem_allocator();
+        unsafe {
+            loader.device.destroy_image_view(self.image_view, None);
+            allocator.destroy_image(self.image, &self.allocation).unwrap();
+        }
+    }
 }
 
 impl ImageWrapper {
@@ -240,15 +247,5 @@ impl ImageWrapper {
             })?;
 
         Ok(image_view)
-    }
-
-    /// Destroy all resources held by the instance
-    pub unsafe fn destroy(
-        &self,
-        device: &Device,
-        allocator: &MemoryAllocator
-    ) -> Result<(), VkError> {
-        device.destroy_image_view(self.image_view, None);
-        allocator.destroy_image(self.image, &self.allocation)
     }
 }

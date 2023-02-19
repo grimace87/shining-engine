@@ -1,6 +1,6 @@
 
 use crate::{VkCore, VkContext, VkError, ImageWrapper};
-use resource::{ImageUsage, TexturePixelFormat};
+use resource::{ImageUsage, Resource, TexturePixelFormat};
 use ash::{
     vk,
     Device,
@@ -70,9 +70,8 @@ impl SwapchainWrapper {
     }
 
     pub unsafe fn destroy(&self, context: &VkContext, swapchain_fn: &Swapchain) {
-        let (allocator, _) = context.get_mem_allocator();
         if let Some(image) = &self.depth_image {
-            image.destroy(&context.device, &allocator).unwrap();
+            image.release(context);
         }
         for image_view in self.image_views.iter() {
             context.device.destroy_image_view(*image_view, None);

@@ -9,6 +9,6 @@ pub use describe::{
     PipelineCreationData,
     BufferUsage, UboUsage, ImageUsage, TexturePixelFormat, ShaderStage, RenderpassTarget
 };
-pub use manager::ResourceManager;
+pub use manager::{ResourceManager, Resource, Handle, HandleInterface};
 pub use loader::ResourceLoader;
 pub use bearer::RawResourceBearer;

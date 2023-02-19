@@ -6,8 +6,7 @@
 /// The test creates a window, creates a VkCore and a VkContext, and then creates a bunch of memory
 /// objects. Then it tears everything down.
 
-use vk_renderer::{VkCore, VkContext, TextureCodec, ResourceUtilities};
-use model::StaticVertex;
+use vk_renderer::{VkCore, VkContext, VkError, TextureCodec, ResourceUtilities};
 use window::{
     WindowEventLooper, RenderCycleEvent, RenderEventHandler, ControlFlow, Event, WindowEvent,
     WindowEventHandler, WindowStateEvent, Window, MessageProxy, WindowCommand
@@ -16,9 +15,8 @@ use std::fmt::Debug;
 
 use model::{COLLADA, Config};
 use resource::{
-    ResourceManager, BufferUsage, ImageUsage, VboCreationData, TextureCreationData,
-    RawResourceBearer, ShaderCreationData, RenderpassCreationData, DescriptorSetLayoutCreationData,
-    PipelineLayoutCreationData, PipelineCreationData, OffscreenFramebufferData
+    ResourceManager, BufferUsage, ImageUsage, VboCreationData, RawResourceBearer, ResourceLoader,
+    Handle, HandleInterface
 };
 
 const VBO_INDEX_SCENE: u32 = 0;
@@ -31,84 +29,52 @@ const TERRAIN_TEXTURE_BYTES: &[u8] =
 
 struct ResourceSource {}
 
-impl RawResourceBearer<StaticVertex> for ResourceSource {
+impl RawResourceBearer<VkContext> for ResourceSource {
 
-    fn get_model_resource_ids(&self) -> &[u32] { &[VBO_INDEX_SCENE] }
+    fn initialise_static_resources(
+        &self,
+        manager: &mut ResourceManager<VkContext>,
+        loader: &VkContext
+    ) -> Result<(), VkError> {
 
-    fn get_texture_resource_ids(&self) -> &[u32] { &[TEXTURE_INDEX_TERRAIN] }
-
-    fn get_shader_resource_ids(&self) -> &[u32] { &[] }
-
-    fn get_offscreen_framebuffer_resource_ids(&self) -> &[u32] { &[] }
-
-    fn get_renderpass_resource_ids(&self) -> &[u32] { &[] }
-
-    fn get_descriptor_set_layout_resource_ids(&self) -> &[u32] { &[] }
-
-    fn get_pipeline_layout_resource_ids(&self) -> &[u32] { &[] }
-
-    fn get_pipeline_resource_ids(&self) -> &[u32] { &[] }
-
-    fn get_raw_model_data(&self, id: u32) -> VboCreationData<StaticVertex> {
-        if id != VBO_INDEX_SCENE {
-            panic!("Bad model resource ID");
-        }
         let scene_model = {
             let collada = COLLADA::new(&SCENE_MODEL_BYTES);
             let mut models = collada.extract_models(Config::default());
             models.remove(0)
         };
         let scene_vertex_count = scene_model.vertices.len();
-        VboCreationData {
+        let creation_data = VboCreationData {
             vertex_data: scene_model.vertices,
             vertex_count: scene_vertex_count,
             draw_indexed: false,
             index_data: None,
             usage: BufferUsage::InitialiseOnceVertexBuffer
-        }
-    }
+        };
+        let vertex_buffer = loader.load_model(&creation_data)?;
+        manager.push_new_with_handle(
+            Handle::from_parts(VBO_INDEX_SCENE, 0),
+            vertex_buffer);
 
-    fn get_raw_texture_data(&self, id: u32) -> TextureCreationData {
-        if id != TEXTURE_INDEX_TERRAIN {
-            panic!("Bad texture resource ID");
-        }
-        ResourceUtilities::decode_texture(
+        let creation_data = ResourceUtilities::decode_texture(
             TERRAIN_TEXTURE_BYTES,
             TextureCodec::Jpeg,
             ImageUsage::TextureSampleOnly)
-            .unwrap()
+            .unwrap();
+        let texture = loader.load_texture(&creation_data)?;
+        manager.push_new_with_handle(
+            Handle::from_parts(TEXTURE_INDEX_TERRAIN, 0),
+            texture);
+
+        Ok(())
     }
 
-    fn get_raw_shader_data(&self, _id: u32) -> ShaderCreationData {
-        panic!("Bad shader resource ID");
-    }
-
-    fn get_raw_offscreen_framebuffer_data(&self, _id: u32) -> OffscreenFramebufferData {
-        panic!("Bad offscreen framebuffer resource ID");
-    }
-
-    fn get_raw_renderpass_data(
+    fn reload_dynamic_resources(
         &self,
-        _id: u32,
-        _swapchain_image_index: usize
-    ) -> RenderpassCreationData {
-        panic!("Bad renderpass resource ID");
-    }
-
-    fn get_raw_descriptor_set_layout_data(&self, _id: u32) -> DescriptorSetLayoutCreationData {
-        panic!("Bad descriptor set layout resource ID");
-    }
-
-    fn get_raw_pipeline_layout_data(&self, _id: u32) -> PipelineLayoutCreationData {
-        panic!("Bad pipeline layout resource ID");
-    }
-
-    fn get_raw_pipeline_data(
-        &self,
-        _id: u32,
-        _swapchain_image_index: usize
-    ) -> PipelineCreationData {
-        panic!("Bad pipeline resource ID");
+        _manager: &mut ResourceManager<VkContext>,
+        _loader: &mut VkContext,
+        _swapchain_image_count: usize
+    ) -> Result<(), VkError> {
+        Ok(())
     }
 }
 
@@ -127,12 +93,14 @@ impl VulkanTestApp {
             // Creation
             let mut core = VkCore::new(window, vec![]).unwrap();
             let mut context = VkContext::new(&core, window).unwrap();
-            let resource_source: Box<dyn RawResourceBearer<StaticVertex>> = Box::new(ResourceSource {});
+            let resource_source: Box<dyn RawResourceBearer<VkContext>> = Box::new(ResourceSource {});
             let mut resource_manager = ResourceManager::new();
-            resource_manager.load_static_resources_from(&context, &resource_source).unwrap();
+            resource_source
+                .initialise_static_resources(&mut resource_manager, &context)
+                .unwrap();
 
             // Release
-            resource_manager.free_resources(&mut context).unwrap();
+            resource_manager.free_all_resources(&context).unwrap();
             context.teardown();
             core.teardown();
         }

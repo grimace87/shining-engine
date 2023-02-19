@@ -15,23 +15,22 @@ pub struct EngineInternals {
 
 impl EngineInternals {
 
-    pub fn new<T: Sized>(window: &Window, scene: &Box<dyn RawResourceBearer<T>>) -> Result<Self, VkError> {
+    pub fn new(
+        window: &Window,
+        resource_bearer: &Box<dyn RawResourceBearer<VkContext>>
+    ) -> Result<Self, VkError> {
         // Creation of required components
         let core = unsafe { VkCore::new(&window, vec![]).unwrap() };
-        let context = VkContext::new(&core, &window).unwrap();
+        let mut context = VkContext::new(&core, &window).unwrap();
         let mut resource_manager = ResourceManager::new();
 
         // Load needed resources
-        let current_extent = context.get_extent()?;
-        resource_manager.load_static_resources_from(&context, scene).unwrap();
-        resource_manager
-            .load_dynamic_resources_from(
-                &context,
-                scene,
-                context.get_swapchain_image_count(),
-                current_extent.width,
-                current_extent.height)
-            .unwrap();
+        let swapchain_image_count = context.get_swapchain_image_count();
+        resource_bearer.initialise_static_resources(&mut resource_manager, &context)?;
+        resource_bearer.reload_dynamic_resources(
+            &mut resource_manager,
+            &mut context,
+            swapchain_image_count)?;
 
         // Initialisation
         Ok(Self {
@@ -56,16 +55,16 @@ impl EngineInternals {
 
         // Free resources
         self.resource_manager.borrow_mut()
-            .free_resources(&mut self.render_context.borrow_mut()).unwrap();
+            .free_all_resources(&mut self.render_context.borrow_mut()).unwrap();
 
         // Destroy renderer
         self.render_context.borrow_mut().teardown();
         self.render_core.borrow_mut().teardown();
     }
 
-    pub fn record_graphics_commands<T: Sized>(
+    pub fn record_graphics_commands(
         &self,
-        scene: &Box<dyn Scene<T>>
+        scene: &Box<dyn Scene<VkContext>>
     ) -> Result<(), VkError> {
         let context = self.render_context.borrow();
         let resource_manager = self.resource_manager.borrow();
@@ -91,11 +90,11 @@ impl EngineInternals {
         self.last_known_client_area_size
     }
 
-    pub fn recreate_surface<T: Sized>(
+    pub fn recreate_surface(
         &mut self,
         window: &Window,
         new_client_area_size: PhysicalSize<u32>,
-        scene: &Box<dyn Scene<T>>
+        scene: &Box<dyn Scene<VkContext>>
     ) -> Result<(), VkError> {
         // Wait for the device to be idle
         unsafe {
@@ -110,24 +109,20 @@ impl EngineInternals {
         unsafe {
             let mut context = self.render_context.borrow_mut();
             let mut resource_manager = self.resource_manager.borrow_mut();
-            let current_extent = context.get_extent()?;
+            let swapchain_image_count = context.get_swapchain_image_count();
             context.recreate_surface(&core, window)?;
             context.regenerate_graphics_command_buffers()?;
-            resource_manager.release_swapchain_dynamic_resources(&mut context)?;
-            resource_manager
-                .load_dynamic_resources_from(
-                    &context,
-                    &resource_bearer,
-                    context.get_swapchain_image_count(),
-                    current_extent.width,
-                    current_extent.height)?;
+            resource_bearer.reload_dynamic_resources(
+                &mut resource_manager,
+                &mut context,
+                swapchain_image_count)?;
         }
         self.record_graphics_commands(scene)?;
         self.last_known_client_area_size = new_client_area_size;
         Ok(())
     }
 
-    pub fn render_frame<T: Sized>(&mut self, scene: &Box<dyn Scene<T>>) -> Result<PresentResult, VkError> {
+    pub fn render_frame(&mut self, scene: &Box<dyn Scene<VkContext>>) -> Result<PresentResult, VkError> {
         let mut context = self.render_context.borrow_mut();
         let resource_manager = self.resource_manager.borrow();
         unsafe {

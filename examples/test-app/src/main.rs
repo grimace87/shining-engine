@@ -1,6 +1,6 @@
 
 use engine::{Engine, StockScene, SceneFactory, Scene};
-use model::StaticVertex;
+use vk_renderer::VkContext;
 use window::{
     RenderEventHandler, RenderCycleEvent, MessageProxy,
     WindowEventHandler, WindowStateEvent, WindowCommand,
@@ -35,8 +35,8 @@ impl WindowEventHandler<TestAppMessage> for QuitsQuicklyApp {
     fn on_window_custom_event(&mut self, _event: TestAppMessage) {}
 }
 
-impl SceneFactory<StaticVertex> for QuitsQuicklyApp {
-    fn get_scene(&self) -> Box<dyn Scene<StaticVertex>> {
+impl SceneFactory<VkContext> for QuitsQuicklyApp {
+    fn get_scene(&self) -> Box<dyn Scene<VkContext>> {
         Box::new(StockScene::new())
     }
 }
