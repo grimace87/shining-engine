@@ -1,8 +1,16 @@
 
 use crate::{VkError, VkContext};
 use crate::mem::{MemoryAllocator, MemoryAllocation, ManagesBufferMemory};
-use resource::{BufferUsage, Resource};
+use resource::{Resource, ResourceManager};
 use ash::vk;
+
+/// ImageUsage enum
+/// An enumeration of what purpose buffer resources can be used for
+#[derive(PartialEq, Copy, Clone, Debug)]
+pub enum BufferUsage {
+    InitialiseOnceVertexBuffer,
+    UniformBuffer
+}
 
 /// BufferCreationParams struct
 /// Description for creating an buffer; should cover all use cases needed by the engine
@@ -20,8 +28,36 @@ pub struct BufferWrapper {
     allocation: MemoryAllocation
 }
 
+/// VboCreationData struct
+/// Specification for how a vertex buffer is to be created
+pub struct VboCreationData {
+    pub vertex_data: Option<*const u8>,
+    pub vertex_size_bytes: usize,
+    pub vertex_count: usize,
+    pub draw_indexed: bool,
+    pub index_data: Option<Vec<u16>>,
+    pub usage: BufferUsage
+}
 
 impl Resource<VkContext> for BufferWrapper {
+    type CreationData = VboCreationData;
+
+    fn create(
+        loader: &VkContext,
+        _resource_manager: &ResourceManager<VkContext>,
+        data: &VboCreationData
+    ) -> Result<Self, VkError> {
+        let buffer = unsafe {
+            BufferWrapper::new(
+                loader,
+                data.usage,
+                data.vertex_count * data.vertex_size_bytes,
+                data.vertex_count,
+                data.vertex_data)?
+        };
+        Ok(buffer)
+    }
+
     fn release(&self, loader: &VkContext) {
         let (allocator, _) = loader.get_mem_allocator();
         unsafe {
@@ -37,12 +73,12 @@ impl Resource<VkContext> for BufferWrapper {
 impl BufferWrapper {
 
     /// Create a new buffer and back it with memory
-    pub unsafe fn new<T: Sized>(
+    unsafe fn new(
         context: &VkContext,
         buffer_usage: BufferUsage,
         size_bytes: usize,
         element_count: usize,
-        init_data: Option<&[T]>
+        init_data: Option<*const u8>
     ) -> Result<BufferWrapper, VkError> {
 
         let transfer_usage = match init_data.is_some() {
@@ -75,7 +111,8 @@ impl BufferWrapper {
             transfer_queue,
             &buffer,
             creation_params.host_accessible,
-            init_data)?;
+            init_data,
+            size_bytes)?;
 
         Ok(BufferWrapper {
             buffer,

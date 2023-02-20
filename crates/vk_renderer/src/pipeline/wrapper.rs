@@ -1,8 +1,26 @@
 
-use crate::{VkContext, VkError, BufferWrapper, RenderpassWrapper, ImageWrapper};
-use resource::{ResourceManager, BufferUsage, Resource, Handle, HandleInterface};
+use crate::{
+    VkContext, VkError, BufferWrapper, RenderpassWrapper, ImageWrapper, BufferUsage,
+    VboCreationData
+};
+use resource::{ResourceManager, Resource, Handle, HandleInterface};
 use ash::vk;
 use std::ffi::CString;
+
+/// PipelineCreationData struct
+/// Information needed to prepare a (potentially reusable) pipeline ahead of time
+pub struct PipelineCreationData {
+    pub pipeline_layout_index: u32,
+    pub renderpass_index: u32,
+    pub descriptor_set_layout_id: u32,
+    pub vertex_shader_index: u32,
+    pub fragment_shader_index: u32,
+    pub vbo_index: u32,
+    pub texture_index: u32,
+    pub vbo_stride_bytes: u32,
+    pub ubo_size_bytes: usize,
+    pub swapchain_image_index: usize
+}
 
 /// PipelineWrapper struct
 /// Resources for a Vulkan pipeline to render a single step within a renderpass within the full
@@ -19,6 +37,38 @@ pub struct PipelineWrapper {
 }
 
 impl Resource<VkContext> for PipelineWrapper {
+    type CreationData = PipelineCreationData;
+
+    fn create(
+        loader: &VkContext,
+        resource_manager: &ResourceManager<VkContext>,
+        data: &PipelineCreationData
+    ) -> Result<Self, VkError> {
+
+        let render_extent = loader.get_extent()?;
+        let mut pipeline = PipelineWrapper::new();
+        unsafe {
+            pipeline.create_resources(
+                loader,
+                resource_manager,
+                data.swapchain_image_index,
+                data.renderpass_index,
+                data.descriptor_set_layout_id,
+                data.pipeline_layout_index,
+                data.vbo_index,
+                data.fragment_shader_index,
+                data.vbo_index,
+                data.vbo_stride_bytes,
+                data.ubo_size_bytes,
+                false,
+                data.texture_index,
+                false,
+                render_extent
+            )?;
+        }
+        Ok(pipeline)
+    }
+
     fn release(&self, loader: &VkContext) {
         unsafe {
             loader.device.destroy_pipeline(self.pipeline, None);
@@ -154,12 +204,18 @@ impl PipelineWrapper {
         // Create uniform buffer
         let uniform_buffer = {
             let uniform_buffer_data: Vec<u8> = vec![0; ubo_size_bytes];
-            let buffer = BufferWrapper::new(
+            let creation_data = VboCreationData {
+                vertex_data: Some(uniform_buffer_data.as_ptr()),
+                vertex_size_bytes: std::mem::size_of::<u8>(),
+                vertex_count: ubo_size_bytes,
+                draw_indexed: false,
+                index_data: None,
+                usage: BufferUsage::UniformBuffer
+            };
+            let buffer = BufferWrapper::create(
                 context,
-                BufferUsage::UniformBuffer,
-                ubo_size_bytes,
-                1,
-                Some(&uniform_buffer_data))?;
+                resource_manager,
+                &creation_data)?;
             buffer
         };
 

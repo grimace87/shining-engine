@@ -6,22 +6,23 @@
 /// The test creates a window, creates a VkCore and a VkContext, and then creates a some pipeline
 /// objects. Then it tears everything down.
 
-use vk_renderer::{VkCore, VkContext, VkError, TextureCodec, ResourceUtilities};
+use vk_renderer::{
+    VkCore, VkContext, VkError, TextureCodec, ResourceUtilities, BufferUsage, ImageUsage,
+    VboCreationData, ShaderCreationData, ShaderStage, RenderpassCreationData,
+    DescriptorSetLayoutCreationData, PipelineLayoutCreationData, PipelineCreationData,
+    RenderpassTarget, UboUsage, BufferWrapper, ImageWrapper, RenderpassWrapper,
+    PipelineWrapper
+};
 use window::{
     WindowEventLooper, RenderCycleEvent, RenderEventHandler, ControlFlow, Event, WindowEvent,
     WindowEventHandler, WindowStateEvent, Window, MessageProxy, WindowCommand
 };
+use ash::vk;
 use std::fmt::Debug;
 use vk_shader_macros::include_glsl;
 
 use model::{COLLADA, Config, StaticVertex};
-use resource::{
-    ResourceManager, BufferUsage, ImageUsage, VboCreationData,
-    RawResourceBearer, ShaderCreationData, ShaderStage, RenderpassCreationData,
-    DescriptorSetLayoutCreationData, PipelineLayoutCreationData, PipelineCreationData,
-    RenderpassTarget, UboUsage, ResourceLoader, Handle,
-    HandleInterface
-};
+use resource::{ResourceManager, RawResourceBearer, Resource, Handle, HandleInterface};
 
 const VBO_INDEX_SCENE: u32 = 0;
 const SCENE_MODEL_BYTES: &[u8] =
@@ -68,13 +69,14 @@ impl RawResourceBearer<VkContext> for ResourceSource {
         };
         let scene_vertex_count = scene_model.vertices.len();
         let creation_data = VboCreationData {
-            vertex_data: scene_model.vertices,
+            vertex_data: Some(scene_model.vertices.as_ptr() as *const u8),
+            vertex_size_bytes: std::mem::size_of::<StaticVertex>(),
             vertex_count: scene_vertex_count,
             draw_indexed: false,
             index_data: None,
             usage: BufferUsage::InitialiseOnceVertexBuffer
         };
-        let vertex_buffer = loader.load_model(&creation_data)?;
+        let vertex_buffer = BufferWrapper::create(loader, &manager, &creation_data)?;
         manager.push_new_with_handle(
             Handle::from_parts(VBO_INDEX_SCENE, 0),
             vertex_buffer);
@@ -84,7 +86,7 @@ impl RawResourceBearer<VkContext> for ResourceSource {
             TextureCodec::Jpeg,
             ImageUsage::TextureSampleOnly)
             .unwrap();
-        let texture = loader.load_texture(&creation_data)?;
+        let texture = ImageWrapper::create(loader, &manager, &creation_data)?;
         manager.push_new_with_handle(
             Handle::from_parts(TEXTURE_INDEX_TERRAIN, 0),
             texture);
@@ -93,7 +95,7 @@ impl RawResourceBearer<VkContext> for ResourceSource {
             data: VERTEX_SHADER,
             stage: ShaderStage::Vertex
         };
-        let vertex_shader = loader.load_shader(&creation_data)?;
+        let vertex_shader = vk::ShaderModule::create(loader, &manager, &creation_data)?;
         manager.push_new_with_handle(
             Handle::from_parts(SHADER_INDEX_VERTEX, 0),
             vertex_shader);
@@ -102,7 +104,7 @@ impl RawResourceBearer<VkContext> for ResourceSource {
             data: FRAGMENT_SHADER,
             stage: ShaderStage::Fragment
         };
-        let fragment_shader = loader.load_shader(&creation_data)?;
+        let fragment_shader = vk::ShaderModule::create(loader, &manager, &creation_data)?;
         manager.push_new_with_handle(
             Handle::from_parts(SHADER_INDEX_FRAGMENT, 0),
             fragment_shader);
@@ -122,7 +124,7 @@ impl RawResourceBearer<VkContext> for ResourceSource {
                 target: RenderpassTarget::SwapchainImageWithDepth,
                 swapchain_image_index: i
             };
-            let renderpass = loader.load_renderpass(&creation_data, &manager)?;
+            let renderpass = RenderpassWrapper::create(loader, &manager, &creation_data)?;
             manager.push_new_with_handle(
                 Handle::from_parts(RENDERPASS_INDEX_MAIN, i as u32),
                 renderpass);
@@ -131,7 +133,7 @@ impl RawResourceBearer<VkContext> for ResourceSource {
         let creation_data = DescriptorSetLayoutCreationData {
             ubo_usage: UboUsage::VertexShaderRead
         };
-        let descriptor_set_layout = loader.load_descriptor_set_layout(&creation_data)?;
+        let descriptor_set_layout = vk::DescriptorSetLayout::create(loader, &manager, &creation_data)?;
         manager.push_new_with_handle(
             Handle::from_parts(DESCRIPTOR_SET_LAYOUT_INDEX_MAIN, 0),
             descriptor_set_layout);
@@ -139,7 +141,7 @@ impl RawResourceBearer<VkContext> for ResourceSource {
         let creation_data = PipelineLayoutCreationData {
             descriptor_set_layout_index: DESCRIPTOR_SET_LAYOUT_INDEX_MAIN
         };
-        let pipeline_layout = loader.load_pipeline_layout(&creation_data, &manager)?;
+        let pipeline_layout = vk::PipelineLayout::create(loader, &manager, &creation_data)?;
         manager.push_new_with_handle(
             Handle::from_parts(PIPELINE_LAYOUT_INDEX_MAIN, 0),
             pipeline_layout);
@@ -157,7 +159,7 @@ impl RawResourceBearer<VkContext> for ResourceSource {
                 ubo_size_bytes: std::mem::size_of::<SomeUniformBuffer>(),
                 swapchain_image_index: i
             };
-            let pipeline = loader.load_pipeline(&creation_data, &manager, i)?;
+            let pipeline = PipelineWrapper::create(loader, &manager, &creation_data)?;
             manager.push_new_with_handle(
                 Handle::from_parts(PIPELINE_INDEX_MAIN, i as u32),
                 pipeline);

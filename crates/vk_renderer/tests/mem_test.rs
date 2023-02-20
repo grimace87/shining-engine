@@ -6,17 +6,16 @@
 /// The test creates a window, creates a VkCore and a VkContext, and then creates a bunch of memory
 /// objects. Then it tears everything down.
 
-use vk_renderer::{VkCore, VkContext, VkError, TextureCodec, ResourceUtilities};
+use vk_renderer::{VkCore, VkContext, VkError, TextureCodec, ResourceUtilities, BufferUsage, ImageUsage, VboCreationData, BufferWrapper, ImageWrapper};
 use window::{
     WindowEventLooper, RenderCycleEvent, RenderEventHandler, ControlFlow, Event, WindowEvent,
     WindowEventHandler, WindowStateEvent, Window, MessageProxy, WindowCommand
 };
 use std::fmt::Debug;
 
-use model::{COLLADA, Config};
+use model::{COLLADA, Config, StaticVertex};
 use resource::{
-    ResourceManager, BufferUsage, ImageUsage, VboCreationData, RawResourceBearer, ResourceLoader,
-    Handle, HandleInterface
+    ResourceManager, RawResourceBearer, Resource, Handle, HandleInterface
 };
 
 const VBO_INDEX_SCENE: u32 = 0;
@@ -44,13 +43,14 @@ impl RawResourceBearer<VkContext> for ResourceSource {
         };
         let scene_vertex_count = scene_model.vertices.len();
         let creation_data = VboCreationData {
-            vertex_data: scene_model.vertices,
+            vertex_data: Some(scene_model.vertices.as_ptr() as *const u8),
+            vertex_size_bytes: std::mem::size_of::<StaticVertex>(),
             vertex_count: scene_vertex_count,
             draw_indexed: false,
             index_data: None,
             usage: BufferUsage::InitialiseOnceVertexBuffer
         };
-        let vertex_buffer = loader.load_model(&creation_data)?;
+        let vertex_buffer = BufferWrapper::create(loader, &manager, &creation_data)?;
         manager.push_new_with_handle(
             Handle::from_parts(VBO_INDEX_SCENE, 0),
             vertex_buffer);
@@ -60,7 +60,7 @@ impl RawResourceBearer<VkContext> for ResourceSource {
             TextureCodec::Jpeg,
             ImageUsage::TextureSampleOnly)
             .unwrap();
-        let texture = loader.load_texture(&creation_data)?;
+        let texture = ImageWrapper::create(loader, &manager, &creation_data)?;
         manager.push_new_with_handle(
             Handle::from_parts(TEXTURE_INDEX_TERRAIN, 0),
             texture);

@@ -1,7 +1,26 @@
 
-use crate::{VkContext, VkError, OffscreenFramebufferWrapper};
-use resource::{TexturePixelFormat, Resource};
+use crate::{VkContext, VkError, OffscreenFramebufferWrapper, TexturePixelFormat};
+use resource::{Resource, ResourceManager, Handle, HandleInterface};
 use ash::vk;
+
+/// RenderpassTarget enum
+/// Used to signal what arrangement of attachments and subpasses will be used in a renderpass
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum RenderpassTarget {
+
+    // Will require one renderpass per swapchain image
+    SwapchainImageWithDepth,
+
+    // Contains the index of the offscreen framebuffer, then the width, then the height
+    OffscreenImageWithDepth(u32, u32, u32)
+}
+
+/// RenderpassCreationData struct
+/// Information needed to prepare a (potentially reusable) renderpass ahead of time
+pub struct RenderpassCreationData {
+    pub target: RenderpassTarget,
+    pub swapchain_image_index: usize
+}
 
 /// RenderpassWrapper struct
 /// Wraps resources related to renderpasses, including framebuffers. Resources need to be recreated
@@ -13,6 +32,33 @@ pub struct RenderpassWrapper {
 }
 
 impl Resource<VkContext> for RenderpassWrapper {
+    type CreationData = RenderpassCreationData;
+
+    fn create(
+        loader: &VkContext,
+        resource_manager: &ResourceManager<VkContext>,
+        data: &RenderpassCreationData
+    ) -> Result<Self, VkError> {
+        match data.target {
+            RenderpassTarget::SwapchainImageWithDepth => {
+                let renderpass = RenderpassWrapper::new_with_swapchain_target(
+                    loader,
+                    data.swapchain_image_index)?;
+                Ok(renderpass)
+            },
+            RenderpassTarget::OffscreenImageWithDepth(framebuffer_index, _, _) => {
+                let framebuffer = resource_manager
+                    .get_item::<OffscreenFramebufferWrapper>(
+                        Handle::from_parts(framebuffer_index, 0))
+                    .unwrap();
+                let renderpass = RenderpassWrapper::new_with_offscreen_target(
+                    loader,
+                    &framebuffer)?;
+                Ok(renderpass)
+            }
+        }
+    }
+
     fn release(&self, loader: &VkContext) {
         unsafe {
             loader.device.destroy_framebuffer(self.swapchain_framebuffer, None);

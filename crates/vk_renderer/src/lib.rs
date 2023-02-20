@@ -9,13 +9,17 @@ pub use crate::core::FeatureDeclaration;
 pub use context::VkContext;
 pub use context::PresentResult;
 pub use context::Queue;
+pub use crate::resource::{
+    ShaderStage, ShaderCreationData, UboUsage, DescriptorSetLayoutCreationData,
+    PipelineLayoutCreationData
+};
 pub use crate::resource::util::{TextureCodec, ResourceUtilities};
-pub use crate::resource::buffer::BufferWrapper;
-pub use crate::resource::image::ImageWrapper;
+pub use crate::resource::buffer::{BufferWrapper, BufferUsage, VboCreationData};
+pub use crate::resource::image::{ImageWrapper, ImageUsage, TexturePixelFormat, TextureCreationData};
 pub use pipeline::{
-    wrapper::PipelineWrapper,
-    renderpass::RenderpassWrapper,
-    offscreen_framebuffer::OffscreenFramebufferWrapper
+    wrapper::{PipelineWrapper, PipelineCreationData},
+    renderpass::{RenderpassWrapper, RenderpassTarget, RenderpassCreationData},
+    offscreen_framebuffer::{OffscreenFramebufferWrapper, OffscreenFramebufferData}
 };
 
 #[derive(Debug)]

@@ -4,8 +4,37 @@ use crate::{
     context::VkContext,
     mem::{MemoryAllocation, ManagesImageMemory}
 };
-use resource::{ImageUsage, TexturePixelFormat, Resource};
+use resource::{Resource, ResourceManager};
 use ash::vk;
+
+/// TexturePixelFormat enum
+/// Abstraction of the set of pixel formats known by the engine
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum TexturePixelFormat {
+    None,
+    Rgba,
+    Unorm16
+}
+
+/// ImageUsage enum
+/// An enumeration of what purpose image resources can be used for
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum ImageUsage {
+    TextureSampleOnly,
+    DepthBuffer,
+    OffscreenRenderSampleColorWriteDepth,
+    Skybox
+}
+
+/// TextureCreationData struct
+/// Specification for how a texture resource is to be created
+pub struct TextureCreationData {
+    pub layer_data: Option<Vec<Vec<u8>>>,
+    pub width: u32,
+    pub height: u32,
+    pub format: TexturePixelFormat,
+    pub usage: ImageUsage
+}
 
 /// ImageCreationParams struct
 /// Description for creating an image; should cover all use cases needed by the engine
@@ -31,6 +60,36 @@ pub struct ImageWrapper {
 }
 
 impl Resource<VkContext> for ImageWrapper {
+    type CreationData = TextureCreationData;
+
+    fn create(
+        loader: &VkContext,
+        _resource_manager: &ResourceManager<VkContext>,
+        data: &TextureCreationData
+    ) -> Result<Self, VkError> {
+        let texture = unsafe {
+            match data.layer_data.as_ref() {
+                Some(init_data) => ImageWrapper::new(
+                    loader,
+                    data.usage,
+                    data.format,
+                    data.width,
+                    data.height,
+                    Some(init_data.as_slice()))?,
+                // TODO - One per swapchain image?
+                None => ImageWrapper::new(
+                    loader,
+                    data.usage,
+                    data.format,
+                    data.width,
+                    data.height,
+                    None
+                )?
+            }
+        };
+        Ok(texture)
+    }
+
     fn release(&self, loader: &VkContext) {
         let (allocator, _) = loader.get_mem_allocator();
         unsafe {

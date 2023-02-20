@@ -1,6 +1,6 @@
 
-use crate::{VkCore, VkContext, VkError, ImageWrapper};
-use resource::{ImageUsage, Resource, TexturePixelFormat};
+use crate::{VkCore, VkContext, VkError, ImageWrapper, ImageUsage, TexturePixelFormat};
+use resource::Resource;
 use ash::{
     vk,
     Device,

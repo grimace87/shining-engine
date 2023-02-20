@@ -1,6 +1,15 @@
 
-use crate::{VkContext, VkError, ImageWrapper};
-use resource::{TexturePixelFormat, ImageUsage, Resource};
+use crate::{VkContext, VkError, ImageWrapper, TexturePixelFormat, ImageUsage};
+use resource::{Resource, ResourceManager};
+
+/// OffscreenFramebufferData struct
+/// Information needed to prepare a non-swapchain framebuffer
+pub struct OffscreenFramebufferData {
+    pub width: u32,
+    pub height: u32,
+    pub color_format: TexturePixelFormat,
+    pub depth_format: TexturePixelFormat
+}
 
 /// FramebufferCreationData struct
 /// Specification for how a framebuffer (render target) resource is to be created
@@ -14,6 +23,24 @@ pub struct OffscreenFramebufferWrapper {
 }
 
 impl Resource<VkContext> for OffscreenFramebufferWrapper {
+    type CreationData = OffscreenFramebufferData;
+
+    fn create(
+        loader: &VkContext,
+        _resource_manager: &ResourceManager<VkContext>,
+        data: &OffscreenFramebufferData
+    ) -> Result<Self, VkError> {
+        let framebuffer = unsafe {
+            OffscreenFramebufferWrapper::new(
+                loader,
+                data.width,
+                data.height,
+                data.color_format,
+                data.depth_format)?
+        };
+        Ok(framebuffer)
+    }
+
     fn release(&self, loader: &VkContext) {
         self.color_texture.release(loader);
         if let Some(depth_image) = &self.depth_texture {

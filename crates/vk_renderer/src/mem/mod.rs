@@ -12,12 +12,13 @@ const INITIAL_STAGING_BUFFER_SIZE: vk::DeviceSize = 134_217_728;
 /// Trait indicating that this type can create buffers and back them with memory
 pub trait ManagesBufferMemory {
 
-    unsafe fn back_buffer_memory<T: Sized>(
+    unsafe fn back_buffer_memory(
         &self,
         transfer_queue: &Queue,
         buffer: &vk::Buffer,
         host_accessible: bool,
-        init_data: Option<&[T]>
+        init_data: Option<*const u8>,
+        init_data_size_bytes: usize
     ) -> Result<MemoryAllocation, VkError>;
 
     unsafe fn destroy_buffer(
@@ -53,25 +54,28 @@ pub trait ManagesImageMemory {
 /// staging buffers and layout transitions as needed to produce ready-to-go textures
 pub trait ManagesMemoryTransfers {
 
-    unsafe fn transfer_data_to_new_buffer<T: Sized>(
+    unsafe fn transfer_data_to_new_buffer(
         &self,
         transfer_queue: &Queue,
         buffer: &vk::Buffer,
         allocation: &MemoryAllocation,
-        init_data: &[T]
+        init_data: *const u8,
+        data_size_bytes: usize
     ) -> Result<(), VkError>;
 
-    unsafe fn transfer_data_to_new_buffer_without_staging_buffer<T: Sized>(
+    unsafe fn transfer_data_to_new_buffer_without_staging_buffer(
         &self,
         allocation: &MemoryAllocation,
-        init_data: &[T]
+        init_data: *const u8,
+        data_size_bytes: usize
     ) -> Result<(), VkError>;
 
-    unsafe fn transfer_data_to_new_buffer_with_staging_buffer<T: Sized>(
+    unsafe fn transfer_data_to_new_buffer_with_staging_buffer(
         &self,
         transfer_queue: &Queue,
         buffer: &vk::Buffer,
-        init_data: &[T]
+        init_data: *const u8,
+        data_size_bytes: usize
     ) -> Result<(), VkError>;
 
     unsafe fn transition_image_layout(

@@ -106,7 +106,13 @@ impl<L: ResourceLoader> ResourceManager<L> {
     }
 }
 
-pub trait Resource<L: ResourceLoader>: 'static {
+pub trait Resource<L: ResourceLoader>: Sized + 'static {
+    type CreationData;
+    fn create(
+        loader: &L,
+        resource_manager: &ResourceManager<L>,
+        data: &Self::CreationData
+    ) -> Result<Self, L::LoadError>;
     fn release(&self, loader: &L);
 }
 

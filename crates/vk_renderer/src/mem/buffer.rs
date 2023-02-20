@@ -9,12 +9,13 @@ impl ManagesBufferMemory for MemoryAllocator {
     /// Prepares the buffer and its memory ready for its intended usage.
     /// After this function returns, the buffer will be backed by memory, and that memory will be
     /// initialised with data if some was provided. If requested, the memory will be host-visible.
-    unsafe fn back_buffer_memory<T: Sized>(
+    unsafe fn back_buffer_memory(
         &self,
         transfer_queue: &Queue,
         buffer: &vk::Buffer,
         host_accessible: bool,
-        init_data: Option<&[T]>
+        init_data: Option<*const u8>,
+        init_data_size_bytes: usize
     ) -> Result<MemoryAllocation, VkError> {
 
         // Allocate the final memory to be used for backing the buffer
@@ -48,7 +49,8 @@ impl ManagesBufferMemory for MemoryAllocator {
                 transfer_queue,
                 buffer,
                 &allocation,
-                data)?;
+                data,
+                init_data_size_bytes)?;
         }
 
         Ok(allocation)

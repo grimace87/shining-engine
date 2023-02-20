@@ -8,44 +8,45 @@ use ash::vk;
 
 impl ManagesMemoryTransfers for MemoryAllocator {
 
-    unsafe fn transfer_data_to_new_buffer<T: Sized>(
+    unsafe fn transfer_data_to_new_buffer(
         &self,
         transfer_queue: &Queue,
         buffer: &vk::Buffer,
         allocation: &MemoryAllocation,
-        init_data: &[T]
+        init_data: *const u8,
+        data_size_bytes: usize
     ) -> Result<(), VkError> {
 
         if self.staging_buffer.is_some() {
             self.transfer_data_to_new_buffer_with_staging_buffer(
-                transfer_queue, buffer, init_data)
+                transfer_queue, buffer, init_data, data_size_bytes)
         } else {
             self.transfer_data_to_new_buffer_without_staging_buffer(
-                allocation, init_data)
+                allocation, init_data, data_size_bytes)
         }
     }
 
-    unsafe fn transfer_data_to_new_buffer_without_staging_buffer<T: Sized>(
+    unsafe fn transfer_data_to_new_buffer_without_staging_buffer(
         &self,
         allocation: &MemoryAllocation,
-        init_data: &[T]
+        init_data: *const u8,
+        data_size_bytes: usize
     ) -> Result<(), VkError> {
 
         // Copy data into buffer memory
-        let data_size = init_data.len() * std::mem::size_of::<T>();
-        let src_ptr = init_data.as_ptr() as *const u8;
         let dst_ptr = self.map_memory::<u8>(allocation)?;
-        dst_ptr.copy_from_nonoverlapping(src_ptr, data_size);
+        dst_ptr.copy_from_nonoverlapping(init_data, data_size_bytes);
         self.unmap_memory(&allocation).unwrap();
 
         Ok(())
     }
 
-    unsafe fn transfer_data_to_new_buffer_with_staging_buffer<T: Sized>(
+    unsafe fn transfer_data_to_new_buffer_with_staging_buffer(
         &self,
         transfer_queue: &Queue,
         buffer: &vk::Buffer,
-        init_data: &[T]
+        init_data: *const u8,
+        data_size_bytes: usize
     ) -> Result<(), VkError> {
 
         let Some(staging_parameters) = &self.staging_buffer else {
@@ -55,10 +56,8 @@ impl ManagesMemoryTransfers for MemoryAllocator {
         };
 
         // Copy data into staging buffer
-        let data_size = init_data.len() * std::mem::size_of::<T>();
-        let src_ptr = init_data.as_ptr() as *const u8;
         let dst_ptr = self.map_memory::<u8>(&staging_parameters.allocation)?;
-        dst_ptr.copy_from_nonoverlapping(src_ptr, data_size);
+        dst_ptr.copy_from_nonoverlapping(init_data, data_size_bytes);
         self.unmap_memory(&staging_parameters.allocation).unwrap();
 
         // Allocate a single-use command buffer and begin recording
@@ -93,7 +92,7 @@ impl ManagesMemoryTransfers for MemoryAllocator {
         let region = vk::BufferCopy {
             src_offset: 0,
             dst_offset: 0,
-            size: data_size as vk::DeviceSize
+            size: data_size_bytes as vk::DeviceSize
         };
         self.device.cmd_copy_buffer(
             self.transfer_command_buffer,

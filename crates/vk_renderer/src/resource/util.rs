@@ -1,7 +1,6 @@
 
-use crate::VkError;
+use crate::{VkError, ImageUsage, TexturePixelFormat, TextureCreationData};
 use model::{Model, StaticVertex, StoresAsFile};
-use resource::{ImageUsage, TexturePixelFormat, TextureCreationData};
 use std::io::Cursor;
 use image::{
     DynamicImage,
