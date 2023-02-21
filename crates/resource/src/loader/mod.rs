@@ -1,3 +1,4 @@
+pub mod null;
 
 pub trait ResourceLoader where Self: Sized {
     type LoadError;
