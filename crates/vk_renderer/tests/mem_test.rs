@@ -15,7 +15,7 @@ use std::fmt::Debug;
 
 use model::{COLLADA, Config, StaticVertex};
 use resource::{
-    ResourceManager, RawResourceBearer, Resource, Handle, HandleInterface
+    ResourceManager, RawResourceBearer, Resource, Handle
 };
 
 const VBO_INDEX_SCENE: u32 = 0;
@@ -52,7 +52,7 @@ impl RawResourceBearer<VkContext> for ResourceSource {
         };
         let vertex_buffer = BufferWrapper::create(loader, &manager, &creation_data)?;
         manager.push_new_with_handle(
-            Handle::from_parts(VBO_INDEX_SCENE, 0),
+            Handle::with_unique_id(VBO_INDEX_SCENE, 0),
             vertex_buffer);
 
         let creation_data = ResourceUtilities::decode_texture(
@@ -62,7 +62,7 @@ impl RawResourceBearer<VkContext> for ResourceSource {
             .unwrap();
         let texture = ImageWrapper::create(loader, &manager, &creation_data)?;
         manager.push_new_with_handle(
-            Handle::from_parts(TEXTURE_INDEX_TERRAIN, 0),
+            Handle::with_unique_id(TEXTURE_INDEX_TERRAIN, 0),
             texture);
 
         Ok(())

@@ -3,7 +3,7 @@ use crate::{
     VkContext, VkError, BufferWrapper, RenderpassWrapper, ImageWrapper, BufferUsage,
     VboCreationData
 };
-use resource::{ResourceManager, Resource, Handle, HandleInterface};
+use resource::{ResourceManager, Resource, Handle};
 use ash::vk;
 use std::ffi::CString;
 
@@ -126,25 +126,26 @@ impl PipelineWrapper {
         // Query renderpass and pipeline layout
         let renderpass_wrapper = resource_manager
             .get_item::<RenderpassWrapper>(
-                Handle::from_parts(renderpass_id, swapchain_image_index as u32))
+                Handle::with_minor_variation(renderpass_id, swapchain_image_index as u32)
+                    .unwrap())
             .unwrap();
         let descriptor_set_layout = resource_manager
             .get_item::<vk::DescriptorSetLayout>(
-                Handle::from_parts(descriptor_set_layout_id, 0))
+                Handle::with_unique_id(descriptor_set_layout_id, 0))
             .unwrap();
         let pipeline_layout = resource_manager
             .get_item::<vk::PipelineLayout>(
-                Handle::from_parts(pipeline_layout_index, 0))
+                Handle::with_unique_id(pipeline_layout_index, 0))
             .unwrap();
 
         // Query shader modules
         let vertex_shader_module = resource_manager
             .get_item::<vk::ShaderModule>(
-                Handle::from_parts(vertex_shader_index as u32, 0))
+                Handle::with_unique_id(vertex_shader_index as u32, 0))
             .unwrap();
         let fragment_shader_module = resource_manager
             .get_item::<vk::ShaderModule>(
-                Handle::from_parts(fragment_shader_index as u32, 0))
+                Handle::with_unique_id(fragment_shader_index as u32, 0))
             .unwrap();
 
         // Make shader modules
@@ -163,7 +164,7 @@ impl PipelineWrapper {
         // Vertex buffer
         let vbo_wrapper = resource_manager
             .get_item::<BufferWrapper>(
-                Handle::from_parts(vbo_index as u32, 0))
+                Handle::with_unique_id(vbo_index as u32, 0))
             .unwrap();
         let vbo_handle = vbo_wrapper.buffer;
 
@@ -223,7 +224,7 @@ impl PipelineWrapper {
         //TODO - Vec from texture_indices.iter().map(|index| ...).collect()
         let texture_image_view = resource_manager
             .get_item::<ImageWrapper>(
-                Handle::from_parts(texture_index as u32, 0))
+                Handle::with_unique_id(texture_index as u32, 0))
             .unwrap()
             .image_view;
 

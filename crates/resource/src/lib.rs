@@ -4,7 +4,7 @@ mod loader;
 mod manager;
 mod table;
 
-pub use handle::{Handle, HandleInterface};
+pub use handle::Handle;
 pub use manager::ResourceManager;
 pub use loader::{ResourceLoader, null::NullResourceLoader};
 pub use bearer::RawResourceBearer;

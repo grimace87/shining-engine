@@ -1,6 +1,6 @@
 
 use crate::{VkContext, VkError, OffscreenFramebufferWrapper, TexturePixelFormat};
-use resource::{Resource, ResourceManager, Handle, HandleInterface};
+use resource::{Resource, ResourceManager, Handle};
 use ash::vk;
 
 /// RenderpassTarget enum
@@ -49,7 +49,7 @@ impl Resource<VkContext> for RenderpassWrapper {
             RenderpassTarget::OffscreenImageWithDepth(framebuffer_index, _, _) => {
                 let framebuffer = resource_manager
                     .get_item::<OffscreenFramebufferWrapper>(
-                        Handle::from_parts(framebuffer_index, 0))
+                        Handle::with_unique_id(framebuffer_index, 0))
                     .unwrap();
                 let renderpass = RenderpassWrapper::new_with_offscreen_target(
                     loader,

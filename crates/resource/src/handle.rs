@@ -1,28 +1,44 @@
 
-pub type Handle = u64;
-
-pub trait HandleInterface {
-    type HandleComponent;
-    fn from_parts(handle: Self::HandleComponent, id: Self::HandleComponent) -> Self;
-    fn handle_part(&self) -> Self::HandleComponent;
-    fn id_part(&self) -> Self::HandleComponent;
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct Handle {
+    table_index: u32,
+    unique_id: u32
 }
 
-impl HandleInterface for Handle {
-    type HandleComponent = u32;
+impl Handle {
 
     #[inline]
-    fn from_parts(handle: u32, id: u32) -> Handle {
-        ((id as u64) << 32) | handle as u64
+    pub fn with_unique_id(index: u32, unique_id: u32) -> Handle {
+        Handle {
+            table_index: index,
+            unique_id
+        }
+    }
+
+    /// Construct a new handle where the unique ID is not important but we instead want to
+    /// store multiple handles with what looks like the same (virtual) table index. This is done by
+    /// passing a variation number separately.
+    /// The variation number must use only two bits.
+    #[inline]
+    pub fn with_minor_variation(index: u32, variation: u32) -> Option<Handle> {
+        if variation >= 0x4 || index >= 0x40000000 {
+            return None;
+        }
+        let table_index = (index << 4) | variation;
+        Some(Handle {
+            table_index,
+            unique_id: 0
+        })
     }
 
     #[inline]
-    fn handle_part(&self) -> u32 {
-        (self & 0xffffffff) as u32
+    pub fn table_index(&self) -> u32 {
+        self.table_index
     }
 
     #[inline]
-    fn id_part(&self) -> u32 {
-        (self >> 32) as u32
+    pub fn unique_id(&self) -> u32 {
+        self.unique_id
     }
 }

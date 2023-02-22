@@ -9,7 +9,8 @@ pub trait DynamicTable<L: ResourceLoader> {
 }
 
 pub struct HandleTable<T: 'static> {
-    pub(crate) next_handle_guess: Handle,
+    pub(crate) next_index_guess: u32,
+    next_unique_id: u32,
     items: Vec<Option<T>>
 }
 
@@ -37,32 +38,37 @@ impl<T: 'static> HandleTable<T> {
 
     pub(crate) fn new() -> Self {
         Self {
-            next_handle_guess: 1,
+            next_index_guess: 1,
+            next_unique_id: 1,
             items: vec![]
         }
     }
 
     pub(crate) fn push_new(&mut self, item: T) -> Handle {
-        let handle = self.obtain_next_handle();
-        self.items[handle as usize] = Some(item);
-        handle
+        let table_index = self.obtain_next_index();
+        self.items[table_index as usize] = Some(item);
+        let unique_id = self.next_unique_id;
+        self.next_unique_id = self.next_unique_id + 1;
+        Handle::with_unique_id(table_index, unique_id)
     }
 
     pub(crate) fn push_new_with_handle(&mut self, handle: Handle, item: T) {
 
+        let table_index = handle.table_index() as usize;
+
         // If vector doesn't yet have the index
-        if handle as usize >= self.items.len() {
-            let extra_length = self.next_handle_guess as usize + 1 - self.items.len();
+        if table_index >= self.items.len() {
+            let extra_length = self.next_index_guess as usize + 1 - self.items.len();
             for _ in 0..extra_length {
                 self.items.push(None);
             }
-            self.items[handle as usize] = Some(item);
+            self.items[table_index] = Some(item);
             return;
         }
 
         // Vector had the index already; it must be unused
-        if self.items[handle as usize].is_none() {
-            self.items[handle as usize] = Some(item);
+        if self.items[table_index].is_none() {
+            self.items[table_index] = Some(item);
             return;
         }
 
@@ -70,52 +76,53 @@ impl<T: 'static> HandleTable<T> {
     }
 
     pub(crate) fn remove(&mut self, handle: Handle) -> Option<T> {
-        if self.items[handle as usize].is_some() {
-            self.next_handle_guess = handle;
+        let table_index = handle.table_index();
+        if self.items[table_index as usize].is_some() {
+            self.next_index_guess = table_index;
         }
-        self.items[handle as usize].take()
+        self.items[table_index as usize].take()
     }
 
     pub fn query_handle(&self, handle: Handle) -> Option<&T> {
-        if let Some(item) = &self.items[handle as usize] {
+        if let Some(item) = &self.items[handle.table_index() as usize] {
             return Some(item);
         }
         None
     }
 
-    fn obtain_next_handle(&mut self) -> Handle {
+    fn obtain_next_index(&mut self) -> u32 {
 
-        // Check handle is outside of current vector size; guaranteed unused
-        if self.next_handle_guess >= self.items.len() as Handle {
-            let handle = self.next_handle_guess;
-            let extra_length = self.next_handle_guess as usize + 1 - self.items.len();
+        // Check if index is outside of current vector size; guaranteed unused
+        if self.next_index_guess >= self.items.len() as u32 {
+            let index = self.next_index_guess;
+            let extra_length = self.next_index_guess as usize + 1 - self.items.len();
             for _ in 0..extra_length {
                 self.items.push(None);
             }
-            self.next_handle_guess = self.next_handle_guess + 1;
-            return handle;
+            self.next_index_guess = self.next_index_guess + 1;
+            return index;
         }
 
         // Check slot is unused
-        if self.items[self.next_handle_guess as usize].is_none() {
-            let handle = self.next_handle_guess;
-            self.next_handle_guess = handle + 1;
-            return handle;
+        if self.items[self.next_index_guess as usize].is_none() {
+            let index = self.next_index_guess;
+            self.next_index_guess = index + 1;
+            return index;
         }
 
         // Need to find an unused slot
         for slot in 0..self.items.len() {
             if self.items[slot].is_none() {
-                let handle = slot as Handle;
-                self.next_handle_guess = handle + 1;
-                return handle;
+                let index = slot as u32;
+                self.next_index_guess = index + 1;
+                return index;
             }
         }
 
         // No unused slot found; add to the end
-        let handle = self.items.len() as Handle;
-        self.next_handle_guess = handle + 1;
+        let index = self.items.len() as u32;
+        self.next_index_guess = index + 1;
         self.items.push(None);
-        handle
+        index
     }
 }

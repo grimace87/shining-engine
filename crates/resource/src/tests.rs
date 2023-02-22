@@ -1,5 +1,5 @@
 
-use crate::{Handle, HandleInterface, Resource, NullResourceLoader, ResourceManager};
+use crate::{Handle, Resource, NullResourceLoader, ResourceManager};
 
 struct SomeResource;
 
@@ -20,7 +20,7 @@ impl Resource<NullResourceLoader> for SomeResource {
 #[test]
 fn explicit_handles_can_read_back() {
     let mut manager: ResourceManager<NullResourceLoader> = ResourceManager::new();
-    let handle = Handle::from_parts(0x1, 0x2);
+    let handle = Handle::with_unique_id(0x1, 0x2);
     let resource = SomeResource;
 
     manager.push_new_with_handle(handle, resource);
@@ -32,31 +32,31 @@ fn explicit_handles_can_read_back() {
 fn implicit_handles_count_logically() {
     let mut manager: ResourceManager<NullResourceLoader> = ResourceManager::new();
 
+    let handle_0 = manager.add_item(SomeResource);
     manager.add_item(SomeResource);
     manager.add_item(SomeResource);
-    manager.add_item(SomeResource);
-    let next_handle_part = manager.next_handle_guess::<SomeResource>().unwrap().handle_part();
-    assert_eq!(next_handle_part, 3);
+    let next_table_index = manager.next_index_guess::<SomeResource>().unwrap();
+    assert_eq!(next_table_index, 3);
 
-    manager.remove_item::<SomeResource>(Handle::from_parts(0, 0));
-    let next_handle_part = manager.next_handle_guess::<SomeResource>().unwrap().handle_part();
-    assert_eq!(next_handle_part, 0);
-
-    manager.add_item(SomeResource);
-    let next_handle_part = manager.next_handle_guess::<SomeResource>().unwrap().handle_part();
-    assert_eq!(next_handle_part, 1);
+    manager.remove_item::<SomeResource>(handle_0);
+    let next_table_index = manager.next_index_guess::<SomeResource>().unwrap();
+    assert_eq!(next_table_index, 0);
 
     manager.add_item(SomeResource);
-    let next_handle_part = manager.next_handle_guess::<SomeResource>().unwrap().handle_part();
-    assert_eq!(next_handle_part, 4);
+    let next_table_index = manager.next_index_guess::<SomeResource>().unwrap();
+    assert_eq!(next_table_index, 1);
+
+    manager.add_item(SomeResource);
+    let next_table_index = manager.next_index_guess::<SomeResource>().unwrap();
+    assert_eq!(next_table_index, 4);
 }
 
 #[test]
 fn implicit_handles_can_read_back() {
     let mut manager: ResourceManager<NullResourceLoader> = ResourceManager::new();
+    let handle_0 = manager.add_item(SomeResource);
     manager.add_item(SomeResource);
-    manager.add_item(SomeResource);
-    let item_back = manager.remove_item::<SomeResource>(Handle::from_parts(0, 0));
+    let item_back = manager.remove_item::<SomeResource>(handle_0);
     assert!(item_back.is_some());
 }
 
@@ -65,6 +65,7 @@ fn unused_handles_read_back_as_none() {
     let mut manager: ResourceManager<NullResourceLoader> = ResourceManager::new();
     manager.add_item(SomeResource);
     manager.add_item(SomeResource);
-    let item_back = manager.remove_item::<SomeResource>(Handle::from_parts(5, 0));
+    let item_back = manager
+        .remove_item::<SomeResource>(Handle::with_unique_id(5, 0));
     assert!(item_back.is_none());
 }

@@ -13,10 +13,10 @@ impl<L: ResourceLoader> ResourceManager<L> {
         }
     }
 
-    pub(crate) fn next_handle_guess<T: Resource<L>>(&self) -> Option<Handle> {
+    pub(crate) fn next_index_guess<T: Resource<L>>(&self) -> Option<u32> {
         for table in self.tables.iter() {
             if let Some(table) = table.as_any().downcast_ref::<HandleTable<T>>() {
-                return Some(table.next_handle_guess);
+                return Some(table.next_index_guess);
             }
         }
         None

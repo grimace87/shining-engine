@@ -3,7 +3,7 @@ pub mod image;
 pub mod util;
 
 use crate::{VkError, VkContext};
-use resource::{ResourceLoader, ResourceManager, Handle, HandleInterface, Resource};
+use resource::{ResourceLoader, ResourceManager, Handle, Resource};
 use ash::vk;
 
 /// ShaderStage enum
@@ -124,7 +124,7 @@ impl Resource<VkContext> for vk::PipelineLayout {
     ) -> Result<Self, VkError> {
         let descriptor_set_layout = resource_manager
             .get_item::<vk::DescriptorSetLayout>(
-                Handle::from_parts(data.descriptor_set_layout_index, 0))
+                Handle::with_unique_id(data.descriptor_set_layout_index, 0))
             .unwrap();
         let pipeline_descriptor_layouts = [*descriptor_set_layout];
         let pipeline_layout_info = vk::PipelineLayoutCreateInfo::builder()

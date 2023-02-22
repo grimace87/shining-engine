@@ -8,7 +8,7 @@ use vk_renderer::{
     PipelineCreationData, RenderpassTarget, UboUsage, ImageWrapper
 };
 use model::{StaticVertex, COLLADA, Config};
-use resource::{ResourceManager, Handle, HandleInterface, RawResourceBearer, Resource};
+use resource::{ResourceManager, Handle, RawResourceBearer, Resource};
 use vk_shader_macros::include_glsl;
 use ash::{Device, vk};
 use cgmath::{Matrix4, SquareMatrix, Rad};
@@ -83,15 +83,17 @@ impl Scene<VkContext> for StockScene {
 
         let renderpass = resource_manager
             .get_item::<RenderpassWrapper>(
-                Handle::from_parts(RENDERPASS_INDEX_MAIN, swapchain_image_index as u32))
+                Handle::with_minor_variation(RENDERPASS_INDEX_MAIN, swapchain_image_index as u32)
+                    .unwrap())
             .unwrap();
         let pipeline = resource_manager
             .get_item::<PipelineWrapper>(
-                Handle::from_parts(PIPELINE_INDEX_MAIN, swapchain_image_index as u32))
+                Handle::with_minor_variation(PIPELINE_INDEX_MAIN, swapchain_image_index as u32)
+                    .unwrap())
             .unwrap();
         let pipeline_layout = resource_manager
             .get_item::<vk::PipelineLayout>(
-                Handle::from_parts(PIPELINE_LAYOUT_INDEX_MAIN, 0))
+                Handle::with_unique_id(PIPELINE_LAYOUT_INDEX_MAIN, 0))
             .unwrap();
 
         // Begin recording
@@ -127,7 +129,7 @@ impl Scene<VkContext> for StockScene {
         // Bind the pipeline and do rendering work
         let vertex_buffer = resource_manager
             .get_item::<BufferWrapper>(
-                Handle::from_parts(VBO_INDEX_SCENE, 0))
+                Handle::with_unique_id(VBO_INDEX_SCENE, 0))
             .unwrap();
         device.cmd_bind_pipeline(
             command_buffer,
@@ -180,7 +182,8 @@ impl Scene<VkContext> for StockScene {
     ) -> Result<(), VkError> {
         let pipeline = resource_manager
             .get_item::<PipelineWrapper>(
-                Handle::from_parts(PIPELINE_INDEX_MAIN, swapchain_image_index as u32))
+                Handle::with_minor_variation(PIPELINE_INDEX_MAIN, swapchain_image_index as u32)
+                    .unwrap())
             .unwrap();
         pipeline.update_uniform_buffer(
             context,
@@ -219,7 +222,7 @@ impl RawResourceBearer<VkContext> for StockResourceBearer {
         };
         let model = BufferWrapper::create(loader, &manager, &creation_data)?;
         manager.push_new_with_handle(
-            Handle::from_parts(VBO_INDEX_SCENE, 0),
+            Handle::with_unique_id(VBO_INDEX_SCENE, 0),
             model);
 
         let creation_data = ResourceUtilities::decode_texture(
@@ -229,7 +232,7 @@ impl RawResourceBearer<VkContext> for StockResourceBearer {
             .unwrap();
         let texture = ImageWrapper::create(loader, &manager, &creation_data)?;
         manager.push_new_with_handle(
-            Handle::from_parts(TEXTURE_INDEX_TERRAIN, 0),
+            Handle::with_unique_id(TEXTURE_INDEX_TERRAIN, 0),
             texture);
 
         let creation_data = ShaderCreationData {
@@ -238,7 +241,7 @@ impl RawResourceBearer<VkContext> for StockResourceBearer {
         };
         let vertex_shader = vk::ShaderModule::create(loader, &manager, &creation_data)?;
         manager.push_new_with_handle(
-            Handle::from_parts(SHADER_INDEX_VERTEX, 0),
+            Handle::with_unique_id(SHADER_INDEX_VERTEX, 0),
             vertex_shader);
 
         let creation_data = ShaderCreationData {
@@ -247,7 +250,7 @@ impl RawResourceBearer<VkContext> for StockResourceBearer {
         };
         let fragment_shader = vk::ShaderModule::create(loader, &manager, &creation_data)?;
         manager.push_new_with_handle(
-            Handle::from_parts(SHADER_INDEX_FRAGMENT, 0),
+            Handle::with_unique_id(SHADER_INDEX_FRAGMENT, 0),
             fragment_shader);
 
         Ok(())
@@ -262,27 +265,27 @@ impl RawResourceBearer<VkContext> for StockResourceBearer {
 
         for i in 0..swapchain_image_count {
             if let Some(item) = manager.remove_item::<RenderpassWrapper>(
-                Handle::from_parts(RENDERPASS_INDEX_MAIN, i as u32)
+                Handle::with_minor_variation(RENDERPASS_INDEX_MAIN, i as u32).unwrap()
             ) {
                 item.release(&loader);
             }
         }
 
         if let Some(item) = manager.remove_item::<vk::DescriptorSetLayout>(
-            Handle::from_parts(DESCRIPTOR_SET_LAYOUT_INDEX_MAIN, 0)
+            Handle::with_unique_id(DESCRIPTOR_SET_LAYOUT_INDEX_MAIN, 0)
         ) {
             item.release(&loader);
         }
 
         if let Some(item) = manager.remove_item::<vk::PipelineLayout>(
-            Handle::from_parts(PIPELINE_LAYOUT_INDEX_MAIN, 0)
+            Handle::with_unique_id(PIPELINE_LAYOUT_INDEX_MAIN, 0)
         ) {
             item.release(&loader);
         }
 
         for i in 0..swapchain_image_count {
             if let Some(item) = manager.remove_item::<PipelineWrapper>(
-                Handle::from_parts(PIPELINE_INDEX_MAIN, i as u32)
+                Handle::with_minor_variation(PIPELINE_INDEX_MAIN, i as u32).unwrap()
             ) {
                 item.release(&loader);
             }
@@ -295,7 +298,8 @@ impl RawResourceBearer<VkContext> for StockResourceBearer {
             };
             let renderpass = RenderpassWrapper::create(loader, &manager, &creation_data)?;
             manager.push_new_with_handle(
-                Handle::from_parts(RENDERPASS_INDEX_MAIN, i as u32),
+                Handle::with_minor_variation(RENDERPASS_INDEX_MAIN, i as u32)
+                    .unwrap(),
                 renderpass);
         }
 
@@ -304,7 +308,7 @@ impl RawResourceBearer<VkContext> for StockResourceBearer {
         };
         let descriptor_set_layout = vk::DescriptorSetLayout::create(loader, &manager, &creation_data)?;
         manager.push_new_with_handle(
-            Handle::from_parts(DESCRIPTOR_SET_LAYOUT_INDEX_MAIN, 0),
+            Handle::with_unique_id(DESCRIPTOR_SET_LAYOUT_INDEX_MAIN, 0),
             descriptor_set_layout);
 
         let creation_data = PipelineLayoutCreationData {
@@ -312,7 +316,7 @@ impl RawResourceBearer<VkContext> for StockResourceBearer {
         };
         let pipeline_layout = vk::PipelineLayout::create(loader, &manager, &creation_data)?;
         manager.push_new_with_handle(
-            Handle::from_parts(PIPELINE_LAYOUT_INDEX_MAIN, 0),
+            Handle::with_unique_id(PIPELINE_LAYOUT_INDEX_MAIN, 0),
             pipeline_layout);
 
         for i in 0..swapchain_image_count {
@@ -330,7 +334,8 @@ impl RawResourceBearer<VkContext> for StockResourceBearer {
             };
             let pipeline = PipelineWrapper::create(loader, &manager, &creation_data)?;
             manager.push_new_with_handle(
-                Handle::from_parts(PIPELINE_INDEX_MAIN, i as u32),
+                Handle::with_minor_variation(PIPELINE_INDEX_MAIN, i as u32)
+                    .unwrap(),
                 pipeline);
         }
 
