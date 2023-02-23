@@ -20,7 +20,7 @@ impl Resource<NullResourceLoader> for SomeResource {
 #[test]
 fn explicit_handles_can_read_back() {
     let mut manager: ResourceManager<NullResourceLoader> = ResourceManager::new();
-    let handle = Handle::with_unique_id(0x1, 0x2);
+    let handle = Handle::for_resource(0x1);
     let resource = SomeResource;
 
     manager.push_new_with_handle(handle, resource);
@@ -66,6 +66,6 @@ fn unused_handles_read_back_as_none() {
     manager.add_item(SomeResource);
     manager.add_item(SomeResource);
     let item_back = manager
-        .remove_item::<SomeResource>(Handle::with_unique_id(5, 0));
+        .remove_item::<SomeResource>(Handle::for_resource(5));
     assert!(item_back.is_none());
 }

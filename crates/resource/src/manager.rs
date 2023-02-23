@@ -29,13 +29,13 @@ impl<L: ResourceLoader> ResourceManager<L> {
 
         for table in self.tables.iter_mut() {
             if let Some(table) = table.as_any_mut().downcast_mut::<HandleTable<T>>() {
-                let handle = table.push_new(item);
+                let handle = table.push_new_resource(item);
                 return handle;
             }
         }
 
         let mut table = HandleTable::new();
-        let handle = table.push_new(item);
+        let handle = table.push_new_resource(item);
         self.tables.push(Box::new(table));
         handle
     }

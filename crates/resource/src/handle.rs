@@ -8,11 +8,19 @@ pub struct Handle {
 
 impl Handle {
 
+    // #[inline]
+    // pub fn with_unique_id(index: u32, unique_id: u32) -> Handle {
+    //     Handle {
+    //         table_index: index,
+    //         unique_id
+    //     }
+    // }
+
     #[inline]
-    pub fn with_unique_id(index: u32, unique_id: u32) -> Handle {
+    pub fn for_resource(index: u32) -> Handle {
         Handle {
             table_index: index,
-            unique_id
+            unique_id: 0
         }
     }
 
@@ -21,7 +29,7 @@ impl Handle {
     /// passing a variation number separately.
     /// The variation number must use only two bits.
     #[inline]
-    pub fn with_minor_variation(index: u32, variation: u32) -> Option<Handle> {
+    pub fn for_resource_variation(index: u32, variation: u32) -> Option<Handle> {
         if variation >= 0x4 || index >= 0x40000000 {
             return None;
         }

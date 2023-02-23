@@ -124,7 +124,7 @@ impl Resource<VkContext> for vk::PipelineLayout {
     ) -> Result<Self, VkError> {
         let descriptor_set_layout = resource_manager
             .get_item::<vk::DescriptorSetLayout>(
-                Handle::with_unique_id(data.descriptor_set_layout_index, 0))
+                Handle::for_resource(data.descriptor_set_layout_index))
             .unwrap();
         let pipeline_descriptor_layouts = [*descriptor_set_layout];
         let pipeline_layout_info = vk::PipelineLayoutCreateInfo::builder()

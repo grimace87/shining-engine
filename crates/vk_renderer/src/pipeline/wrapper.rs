@@ -126,26 +126,26 @@ impl PipelineWrapper {
         // Query renderpass and pipeline layout
         let renderpass_wrapper = resource_manager
             .get_item::<RenderpassWrapper>(
-                Handle::with_minor_variation(renderpass_id, swapchain_image_index as u32)
+                Handle::for_resource_variation(renderpass_id, swapchain_image_index as u32)
                     .unwrap())
             .unwrap();
         let descriptor_set_layout = resource_manager
             .get_item::<vk::DescriptorSetLayout>(
-                Handle::with_unique_id(descriptor_set_layout_id, 0))
+                Handle::for_resource(descriptor_set_layout_id))
             .unwrap();
         let pipeline_layout = resource_manager
             .get_item::<vk::PipelineLayout>(
-                Handle::with_unique_id(pipeline_layout_index, 0))
+                Handle::for_resource(pipeline_layout_index))
             .unwrap();
 
         // Query shader modules
         let vertex_shader_module = resource_manager
             .get_item::<vk::ShaderModule>(
-                Handle::with_unique_id(vertex_shader_index as u32, 0))
+                Handle::for_resource(vertex_shader_index as u32))
             .unwrap();
         let fragment_shader_module = resource_manager
             .get_item::<vk::ShaderModule>(
-                Handle::with_unique_id(fragment_shader_index as u32, 0))
+                Handle::for_resource(fragment_shader_index as u32))
             .unwrap();
 
         // Make shader modules
@@ -164,7 +164,7 @@ impl PipelineWrapper {
         // Vertex buffer
         let vbo_wrapper = resource_manager
             .get_item::<BufferWrapper>(
-                Handle::with_unique_id(vbo_index as u32, 0))
+                Handle::for_resource(vbo_index as u32))
             .unwrap();
         let vbo_handle = vbo_wrapper.buffer;
 
@@ -224,7 +224,7 @@ impl PipelineWrapper {
         //TODO - Vec from texture_indices.iter().map(|index| ...).collect()
         let texture_image_view = resource_manager
             .get_item::<ImageWrapper>(
-                Handle::with_unique_id(texture_index as u32, 0))
+                Handle::for_resource(texture_index as u32))
             .unwrap()
             .image_view;
 

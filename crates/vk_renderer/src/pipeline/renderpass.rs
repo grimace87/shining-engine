@@ -49,7 +49,7 @@ impl Resource<VkContext> for RenderpassWrapper {
             RenderpassTarget::OffscreenImageWithDepth(framebuffer_index, _, _) => {
                 let framebuffer = resource_manager
                     .get_item::<OffscreenFramebufferWrapper>(
-                        Handle::with_unique_id(framebuffer_index, 0))
+                        Handle::for_resource(framebuffer_index))
                     .unwrap();
                 let renderpass = RenderpassWrapper::new_with_offscreen_target(
                     loader,

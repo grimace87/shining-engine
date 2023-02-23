@@ -52,7 +52,7 @@ impl RawResourceBearer<VkContext> for ResourceSource {
         };
         let vertex_buffer = BufferWrapper::create(loader, &manager, &creation_data)?;
         manager.push_new_with_handle(
-            Handle::with_unique_id(VBO_INDEX_SCENE, 0),
+            Handle::for_resource(VBO_INDEX_SCENE),
             vertex_buffer);
 
         let creation_data = ResourceUtilities::decode_texture(
@@ -62,7 +62,7 @@ impl RawResourceBearer<VkContext> for ResourceSource {
             .unwrap();
         let texture = ImageWrapper::create(loader, &manager, &creation_data)?;
         manager.push_new_with_handle(
-            Handle::with_unique_id(TEXTURE_INDEX_TERRAIN, 0),
+            Handle::for_resource(TEXTURE_INDEX_TERRAIN),
             texture);
 
         Ok(())

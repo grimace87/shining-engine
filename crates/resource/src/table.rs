@@ -44,12 +44,10 @@ impl<T: 'static> HandleTable<T> {
         }
     }
 
-    pub(crate) fn push_new(&mut self, item: T) -> Handle {
+    pub(crate) fn push_new_resource(&mut self, item: T) -> Handle {
         let table_index = self.obtain_next_index();
         self.items[table_index as usize] = Some(item);
-        let unique_id = self.next_unique_id;
-        self.next_unique_id = self.next_unique_id + 1;
-        Handle::with_unique_id(table_index, unique_id)
+        Handle::for_resource(table_index)
     }
 
     pub(crate) fn push_new_with_handle(&mut self, handle: Handle, item: T) {
