@@ -38,7 +38,7 @@ impl<T: 'static> HandleTable<T> {
 
     pub(crate) fn new() -> Self {
         Self {
-            next_index_guess: 1,
+            next_index_guess: 0,
             next_unique_id: 1,
             items: vec![]
         }
@@ -56,7 +56,7 @@ impl<T: 'static> HandleTable<T> {
 
         // If vector doesn't yet have the index
         if table_index >= self.items.len() {
-            let extra_length = self.next_index_guess as usize + 1 - self.items.len();
+            let extra_length = table_index as usize + 1 - self.items.len();
             for _ in 0..extra_length {
                 self.items.push(None);
             }
@@ -74,11 +74,14 @@ impl<T: 'static> HandleTable<T> {
     }
 
     pub(crate) fn remove(&mut self, handle: Handle) -> Option<T> {
-        let table_index = handle.table_index();
-        if self.items[table_index as usize].is_some() {
-            self.next_index_guess = table_index;
+        let table_index = handle.table_index() as usize;
+        if table_index >= self.items.len() {
+            return None;
         }
-        self.items[table_index as usize].take()
+        if self.items[table_index].is_some() {
+            self.next_index_guess = table_index as u32;
+        }
+        self.items[table_index].take()
     }
 
     pub fn query_handle(&self, handle: Handle) -> Option<&T> {

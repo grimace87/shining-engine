@@ -48,6 +48,10 @@ impl<L: ResourceLoader> ResourceManager<L> {
                 return;
             }
         }
+
+        let mut table = HandleTable::new();
+        table.push_new_with_handle(handle, item);
+        self.tables.push(Box::new(table));
     }
 
     pub fn get_item<T: Resource<L>>(&self, handle: Handle) -> Option<&T> {
