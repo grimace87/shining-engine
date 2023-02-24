@@ -1,5 +1,8 @@
 
-use crate::{Handle, ResourceLoader, Resource};
+use crate::{
+    Handle,
+    resource::{Resource, ResourceLoader}
+};
 use std::any::Any;
 
 pub trait DynamicTable<L: ResourceLoader> {

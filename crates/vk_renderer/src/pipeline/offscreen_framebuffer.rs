@@ -1,6 +1,6 @@
 
 use crate::{VkContext, VkError, ImageWrapper, TexturePixelFormat, ImageUsage};
-use resource::{Resource, ResourceManager};
+use ecs::{EcsManager, resource::Resource};
 
 /// OffscreenFramebufferData struct
 /// Information needed to prepare a non-swapchain framebuffer
@@ -27,7 +27,7 @@ impl Resource<VkContext> for OffscreenFramebufferWrapper {
 
     fn create(
         loader: &VkContext,
-        _resource_manager: &ResourceManager<VkContext>,
+        _ecs: &EcsManager<VkContext>,
         data: &OffscreenFramebufferData
     ) -> Result<Self, VkError> {
         let framebuffer = unsafe {

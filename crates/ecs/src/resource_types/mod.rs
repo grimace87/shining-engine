@@ -1,24 +1,16 @@
 mod bearer;
-mod handle;
 mod loader;
-mod manager;
-mod table;
 
-pub use handle::Handle;
-pub use manager::ResourceManager;
-pub use loader::{ResourceLoader, null::NullResourceLoader};
 pub use bearer::RawResourceBearer;
-pub use table::{HandleTable, DynamicTable};
+pub use loader::ResourceLoader;
+use crate::EcsManager;
 
 pub trait Resource<L: ResourceLoader>: Sized + 'static {
     type CreationData;
     fn create(
         loader: &L,
-        resource_manager: &ResourceManager<L>,
+        ecs: &EcsManager<L>,
         data: &Self::CreationData
     ) -> Result<Self, L::LoadError>;
     fn release(&self, loader: &L);
 }
-
-#[cfg(test)]
-mod tests;

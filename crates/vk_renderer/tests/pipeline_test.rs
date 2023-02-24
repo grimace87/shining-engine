@@ -22,7 +22,7 @@ use std::fmt::Debug;
 use vk_shader_macros::include_glsl;
 
 use model::{COLLADA, Config, StaticVertex};
-use resource::{ResourceManager, RawResourceBearer, Resource, Handle};
+use ecs::{EcsManager, Handle, resource::{RawResourceBearer, Resource}};
 
 const VBO_INDEX_SCENE: u32 = 0;
 const SCENE_MODEL_BYTES: &[u8] =
@@ -58,7 +58,7 @@ impl RawResourceBearer<VkContext> for ResourceSource {
 
     fn initialise_static_resources(
         &self,
-        manager: &mut ResourceManager<VkContext>,
+        ecs: &mut EcsManager<VkContext>,
         loader: &VkContext
     ) -> Result<(), VkError> {
 
@@ -76,8 +76,8 @@ impl RawResourceBearer<VkContext> for ResourceSource {
             index_data: None,
             usage: BufferUsage::InitialiseOnceVertexBuffer
         };
-        let vertex_buffer = BufferWrapper::create(loader, &manager, &creation_data)?;
-        manager.push_new_with_handle(
+        let vertex_buffer = BufferWrapper::create(loader, &ecs, &creation_data)?;
+        ecs.push_new_with_handle(
             Handle::for_resource(VBO_INDEX_SCENE),
             vertex_buffer);
 
@@ -86,8 +86,8 @@ impl RawResourceBearer<VkContext> for ResourceSource {
             TextureCodec::Jpeg,
             ImageUsage::TextureSampleOnly)
             .unwrap();
-        let texture = ImageWrapper::create(loader, &manager, &creation_data)?;
-        manager.push_new_with_handle(
+        let texture = ImageWrapper::create(loader, &ecs, &creation_data)?;
+        ecs.push_new_with_handle(
             Handle::for_resource(TEXTURE_INDEX_TERRAIN),
             texture);
 
@@ -95,8 +95,8 @@ impl RawResourceBearer<VkContext> for ResourceSource {
             data: VERTEX_SHADER,
             stage: ShaderStage::Vertex
         };
-        let vertex_shader = vk::ShaderModule::create(loader, &manager, &creation_data)?;
-        manager.push_new_with_handle(
+        let vertex_shader = vk::ShaderModule::create(loader, &ecs, &creation_data)?;
+        ecs.push_new_with_handle(
             Handle::for_resource(SHADER_INDEX_VERTEX),
             vertex_shader);
 
@@ -104,8 +104,8 @@ impl RawResourceBearer<VkContext> for ResourceSource {
             data: FRAGMENT_SHADER,
             stage: ShaderStage::Fragment
         };
-        let fragment_shader = vk::ShaderModule::create(loader, &manager, &creation_data)?;
-        manager.push_new_with_handle(
+        let fragment_shader = vk::ShaderModule::create(loader, &ecs, &creation_data)?;
+        ecs.push_new_with_handle(
             Handle::for_resource(SHADER_INDEX_FRAGMENT),
             fragment_shader);
 
@@ -114,7 +114,7 @@ impl RawResourceBearer<VkContext> for ResourceSource {
 
     fn reload_dynamic_resources(
         &self,
-        manager: &mut ResourceManager<VkContext>,
+        ecs: &mut EcsManager<VkContext>,
         loader: &mut VkContext,
         swapchain_image_count: usize
     ) -> Result<(), VkError> {
@@ -124,8 +124,8 @@ impl RawResourceBearer<VkContext> for ResourceSource {
                 target: RenderpassTarget::SwapchainImageWithDepth,
                 swapchain_image_index: i
             };
-            let renderpass = RenderpassWrapper::create(loader, &manager, &creation_data)?;
-            manager.push_new_with_handle(
+            let renderpass = RenderpassWrapper::create(loader, &ecs, &creation_data)?;
+            ecs.push_new_with_handle(
                 Handle::for_resource_variation(RENDERPASS_INDEX_MAIN, i as u32)
                     .unwrap(),
                 renderpass);
@@ -134,16 +134,16 @@ impl RawResourceBearer<VkContext> for ResourceSource {
         let creation_data = DescriptorSetLayoutCreationData {
             ubo_usage: UboUsage::VertexShaderRead
         };
-        let descriptor_set_layout = vk::DescriptorSetLayout::create(loader, &manager, &creation_data)?;
-        manager.push_new_with_handle(
+        let descriptor_set_layout = vk::DescriptorSetLayout::create(loader, &ecs, &creation_data)?;
+        ecs.push_new_with_handle(
             Handle::for_resource(DESCRIPTOR_SET_LAYOUT_INDEX_MAIN),
             descriptor_set_layout);
 
         let creation_data = PipelineLayoutCreationData {
             descriptor_set_layout_index: DESCRIPTOR_SET_LAYOUT_INDEX_MAIN
         };
-        let pipeline_layout = vk::PipelineLayout::create(loader, &manager, &creation_data)?;
-        manager.push_new_with_handle(
+        let pipeline_layout = vk::PipelineLayout::create(loader, &ecs, &creation_data)?;
+        ecs.push_new_with_handle(
             Handle::for_resource(PIPELINE_LAYOUT_INDEX_MAIN),
             pipeline_layout);
 
@@ -160,8 +160,8 @@ impl RawResourceBearer<VkContext> for ResourceSource {
                 ubo_size_bytes: std::mem::size_of::<SomeUniformBuffer>(),
                 swapchain_image_index: i
             };
-            let pipeline = PipelineWrapper::create(loader, &manager, &creation_data)?;
-            manager.push_new_with_handle(
+            let pipeline = PipelineWrapper::create(loader, &ecs, &creation_data)?;
+            ecs.push_new_with_handle(
                 Handle::for_resource_variation(PIPELINE_INDEX_MAIN, i as u32)
                     .unwrap(),
                 pipeline);
@@ -187,20 +187,20 @@ impl VulkanTestApp {
             let mut core = VkCore::new(window, vec![]).unwrap();
             let mut context = VkContext::new(&core, window).unwrap();
             let resource_source: Box<dyn RawResourceBearer<VkContext>> = Box::new(ResourceSource {});
-            let mut resource_manager = ResourceManager::new();
+            let mut ecs = EcsManager::new();
             let swapchain_image_count = context.get_swapchain_image_count();
             resource_source
-                .initialise_static_resources(&mut resource_manager, &context)
+                .initialise_static_resources(&mut ecs, &context)
                 .unwrap();
             resource_source
                 .reload_dynamic_resources(
-                    &mut resource_manager,
+                    &mut ecs,
                     &mut context,
                     swapchain_image_count)
                 .unwrap();
 
             // Release
-            resource_manager.free_all_resources(&context).unwrap();
+            ecs.free_all_resources(&context).unwrap();
             context.teardown();
             core.teardown();
         }

@@ -1,6 +1,6 @@
 
 use crate::{VkContext, VkError, OffscreenFramebufferWrapper, TexturePixelFormat};
-use resource::{Resource, ResourceManager, Handle};
+use ecs::{EcsManager, Handle, resource::Resource};
 use ash::vk;
 
 /// RenderpassTarget enum
@@ -36,7 +36,7 @@ impl Resource<VkContext> for RenderpassWrapper {
 
     fn create(
         loader: &VkContext,
-        resource_manager: &ResourceManager<VkContext>,
+        ecs: &EcsManager<VkContext>,
         data: &RenderpassCreationData
     ) -> Result<Self, VkError> {
         match data.target {
@@ -47,7 +47,7 @@ impl Resource<VkContext> for RenderpassWrapper {
                 Ok(renderpass)
             },
             RenderpassTarget::OffscreenImageWithDepth(framebuffer_index, _, _) => {
-                let framebuffer = resource_manager
+                let framebuffer  = ecs
                     .get_item::<OffscreenFramebufferWrapper>(
                         Handle::for_resource(framebuffer_index))
                     .unwrap();

@@ -3,7 +3,7 @@ use crate::{
     VkContext, VkError, BufferWrapper, RenderpassWrapper, ImageWrapper, BufferUsage,
     VboCreationData
 };
-use resource::{ResourceManager, Resource, Handle};
+use ecs::{EcsManager, Handle, resource::Resource};
 use ash::vk;
 use std::ffi::CString;
 
@@ -41,7 +41,7 @@ impl Resource<VkContext> for PipelineWrapper {
 
     fn create(
         loader: &VkContext,
-        resource_manager: &ResourceManager<VkContext>,
+        ecs: &EcsManager<VkContext>,
         data: &PipelineCreationData
     ) -> Result<Self, VkError> {
 
@@ -50,7 +50,7 @@ impl Resource<VkContext> for PipelineWrapper {
         unsafe {
             pipeline.create_resources(
                 loader,
-                resource_manager,
+                ecs,
                 data.swapchain_image_index,
                 data.renderpass_index,
                 data.descriptor_set_layout_id,
@@ -107,7 +107,7 @@ impl PipelineWrapper {
     pub unsafe fn create_resources(
         &mut self,
         context: &VkContext,
-        resource_manager: &ResourceManager<VkContext>,
+        ecs: &EcsManager<VkContext>,
         swapchain_image_index: usize,
         renderpass_id: u32,
         descriptor_set_layout_id: u32,
@@ -124,26 +124,26 @@ impl PipelineWrapper {
     ) -> Result<(), VkError> {
 
         // Query renderpass and pipeline layout
-        let renderpass_wrapper = resource_manager
+        let renderpass_wrapper  = ecs
             .get_item::<RenderpassWrapper>(
                 Handle::for_resource_variation(renderpass_id, swapchain_image_index as u32)
                     .unwrap())
             .unwrap();
-        let descriptor_set_layout = resource_manager
+        let descriptor_set_layout  = ecs
             .get_item::<vk::DescriptorSetLayout>(
                 Handle::for_resource(descriptor_set_layout_id))
             .unwrap();
-        let pipeline_layout = resource_manager
+        let pipeline_layout  = ecs
             .get_item::<vk::PipelineLayout>(
                 Handle::for_resource(pipeline_layout_index))
             .unwrap();
 
         // Query shader modules
-        let vertex_shader_module = resource_manager
+        let vertex_shader_module  = ecs
             .get_item::<vk::ShaderModule>(
                 Handle::for_resource(vertex_shader_index as u32))
             .unwrap();
-        let fragment_shader_module = resource_manager
+        let fragment_shader_module  = ecs
             .get_item::<vk::ShaderModule>(
                 Handle::for_resource(fragment_shader_index as u32))
             .unwrap();
@@ -162,7 +162,7 @@ impl PipelineWrapper {
             vec![vertex_shader_stage.build(), fragment_shader_stage.build()];
 
         // Vertex buffer
-        let vbo_wrapper = resource_manager
+        let vbo_wrapper  = ecs
             .get_item::<BufferWrapper>(
                 Handle::for_resource(vbo_index as u32))
             .unwrap();
@@ -215,14 +215,14 @@ impl PipelineWrapper {
             };
             let buffer = BufferWrapper::create(
                 context,
-                resource_manager,
+                ecs,
                 &creation_data)?;
             buffer
         };
 
         // Texture image
         //TODO - Vec from texture_indices.iter().map(|index| ...).collect()
-        let texture_image_view = resource_manager
+        let texture_image_view  = ecs
             .get_item::<ImageWrapper>(
                 Handle::for_resource(texture_index as u32))
             .unwrap()

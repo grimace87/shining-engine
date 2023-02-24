@@ -9,7 +9,7 @@ raw-window-handle = { workspace = true }
 
 [dev-dependencies]
 window = { path = "." }
-resource = { path = "../resource" }
+ecs = { path = "../ecs" }
 
 [[test]]
 name = "user_close"

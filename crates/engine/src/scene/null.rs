@@ -1,5 +1,5 @@
 
-use resource::{RawResourceBearer, ResourceManager};
+use ecs::{EcsManager, resource::RawResourceBearer};
 use vk_renderer::{VkContext, VkError};
 use ash::{Device, vk};
 use crate::Scene;
@@ -25,7 +25,7 @@ impl Scene<VkContext> for NullScene {
         _device: &Device,
         _command_buffer: vk::CommandBuffer,
         _render_extent: vk::Extent2D,
-        _resource_manager: &ResourceManager<VkContext>,
+        _ecs: &EcsManager<VkContext>,
         _swapchain_image_index: usize
     ) -> Result<(), VkError> {
         Ok(())
@@ -37,7 +37,7 @@ impl Scene<VkContext> for NullScene {
         &self,
         _context: &VkContext,
         _swapchain_image_index: usize,
-        _resource_manager: &ResourceManager<VkContext>
+        _ecs: &EcsManager<VkContext>
     ) -> Result<(), VkError> {
         Ok(())
     }
@@ -53,7 +53,7 @@ impl RawResourceBearer<VkContext> for NullResourceBearer {
 
     fn initialise_static_resources(
         &self,
-        _manager: &mut ResourceManager<VkContext>,
+        _ecs: &mut EcsManager<VkContext>,
         _loader: &VkContext
     ) -> Result<(), VkError> {
         Ok(())
@@ -61,7 +61,7 @@ impl RawResourceBearer<VkContext> for NullResourceBearer {
 
     fn reload_dynamic_resources(
         &self,
-        _manager: &mut ResourceManager<VkContext>,
+        _ecs: &mut EcsManager<VkContext>,
         _loader: &mut VkContext,
         _swapchain_image_count: usize
     ) -> Result<(), VkError> {

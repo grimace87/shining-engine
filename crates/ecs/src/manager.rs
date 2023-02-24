@@ -1,11 +1,14 @@
 
-use crate::{Handle, DynamicTable, HandleTable, ResourceLoader, Resource};
+use crate::{
+    Handle, DynamicTable, HandleTable,
+    resource::{Resource, ResourceLoader}
+};
 
-pub struct ResourceManager<L: ResourceLoader> {
+pub struct EcsManager<L: ResourceLoader> {
     tables: Vec<Box<dyn DynamicTable<L>>>
 }
 
-impl<L: ResourceLoader> ResourceManager<L> {
+impl<L: ResourceLoader> EcsManager<L> {
 
     pub fn new() -> Self {
         Self {

@@ -4,7 +4,7 @@ use crate::{
     context::VkContext,
     mem::{MemoryAllocation, ManagesImageMemory}
 };
-use resource::{Resource, ResourceManager};
+use ecs::{EcsManager, resource::Resource};
 use ash::vk;
 
 /// TexturePixelFormat enum
@@ -64,7 +64,7 @@ impl Resource<VkContext> for ImageWrapper {
 
     fn create(
         loader: &VkContext,
-        _resource_manager: &ResourceManager<VkContext>,
+        _ecs: &EcsManager<VkContext>,
         data: &TextureCreationData
     ) -> Result<Self, VkError> {
         let texture = unsafe {

@@ -1,7 +1,7 @@
 
 use crate::{VkError, VkContext};
 use crate::mem::{MemoryAllocator, MemoryAllocation, ManagesBufferMemory};
-use resource::{Resource, ResourceManager};
+use ecs::{EcsManager, resource::Resource};
 use ash::vk;
 
 /// ImageUsage enum
@@ -44,7 +44,7 @@ impl Resource<VkContext> for BufferWrapper {
 
     fn create(
         loader: &VkContext,
-        _resource_manager: &ResourceManager<VkContext>,
+        _ecs: &EcsManager<VkContext>,
         data: &VboCreationData
     ) -> Result<Self, VkError> {
         let buffer = unsafe {

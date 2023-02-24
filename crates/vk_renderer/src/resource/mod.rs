@@ -3,7 +3,7 @@ pub mod image;
 pub mod util;
 
 use crate::{VkError, VkContext};
-use resource::{ResourceLoader, ResourceManager, Handle, Resource};
+use ecs::{EcsManager, Handle, resource::{Resource, ResourceLoader}};
 use ash::vk;
 
 /// ShaderStage enum
@@ -46,7 +46,7 @@ impl Resource<VkContext, > for vk::ShaderModule {
 
     fn create(
         loader: &VkContext,
-        _resource_manager: &ResourceManager<VkContext>,
+        _ecs: &EcsManager<VkContext>,
         data: &ShaderCreationData
     ) -> Result<Self, VkError> {
         unsafe {
@@ -70,7 +70,7 @@ impl Resource<VkContext> for vk::DescriptorSetLayout {
 
     fn create(
         loader: &VkContext,
-        _resource_manager: &ResourceManager<VkContext>,
+        _ecs: &EcsManager<VkContext>,
         data: &DescriptorSetLayoutCreationData
     ) -> Result<Self, VkError> {
         let ubo_stage_flags = match data.ubo_usage {
@@ -119,10 +119,10 @@ impl Resource<VkContext> for vk::PipelineLayout {
 
     fn create(
         loader: &VkContext,
-        resource_manager: &ResourceManager<VkContext>,
+        ecs: &EcsManager<VkContext>,
         data: &PipelineLayoutCreationData
     ) -> Result<Self, VkError> {
-        let descriptor_set_layout = resource_manager
+        let descriptor_set_layout  = ecs
             .get_item::<vk::DescriptorSetLayout>(
                 Handle::for_resource(data.descriptor_set_layout_index))
             .unwrap();

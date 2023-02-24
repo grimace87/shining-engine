@@ -2,7 +2,7 @@ pub mod null;
 pub mod stock;
 
 use vk_renderer::{VkError, VkContext};
-use resource::{RawResourceBearer, ResourceManager, ResourceLoader};
+use ecs::{EcsManager, resource::{ResourceLoader, RawResourceBearer}};
 use ash::{Device, vk};
 
 pub trait SceneFactory<L: ResourceLoader> {
@@ -20,7 +20,7 @@ pub trait Scene<L: ResourceLoader> {
         device: &Device,
         command_buffer: vk::CommandBuffer,
         render_extent: vk::Extent2D,
-        resource_manager: &ResourceManager<L>,
+        ecs: &EcsManager<L>,
         swapchain_image_index: usize
     ) -> Result<(), VkError>;
 
@@ -32,6 +32,6 @@ pub trait Scene<L: ResourceLoader> {
         &self,
         context: &VkContext,
         swapchain_image_index: usize,
-        resource_manager: &ResourceManager<L>
+        ecs: &EcsManager<L>
     ) -> Result<(), VkError>;
 }

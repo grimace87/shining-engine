@@ -2,7 +2,7 @@
 use crate::{StockTimer, Timer, Scene};
 use vk_renderer::{VkError, VkCore, VkContext, PresentResult};
 use window::{Window, PhysicalSize};
-use resource::{ResourceManager, RawResourceBearer};
+use ecs::{EcsManager, resource::RawResourceBearer};
 use std::cell::RefCell;
 
 pub struct EngineInternals {
@@ -10,7 +10,7 @@ pub struct EngineInternals {
     last_known_client_area_size: PhysicalSize<u32>,
     render_core: RefCell<VkCore>,
     render_context: RefCell<VkContext>,
-    resource_manager: RefCell<ResourceManager<VkContext>>
+    ecs: RefCell<EcsManager<VkContext>>
 }
 
 impl EngineInternals {
@@ -22,13 +22,13 @@ impl EngineInternals {
         // Creation of required components
         let core = unsafe { VkCore::new(&window, vec![]).unwrap() };
         let mut context = VkContext::new(&core, &window).unwrap();
-        let mut resource_manager = ResourceManager::new();
+        let mut ecs = EcsManager::new();
 
         // Load needed resources
         let swapchain_image_count = context.get_swapchain_image_count();
-        resource_bearer.initialise_static_resources(&mut resource_manager, &context)?;
+        resource_bearer.initialise_static_resources(&mut ecs, &context)?;
         resource_bearer.reload_dynamic_resources(
-            &mut resource_manager,
+            &mut ecs,
             &mut context,
             swapchain_image_count)?;
 
@@ -38,7 +38,7 @@ impl EngineInternals {
             last_known_client_area_size: PhysicalSize::default(),
             render_core: RefCell::new(core),
             render_context: RefCell::new(context),
-            resource_manager: RefCell::new(resource_manager)
+            ecs: RefCell::new(ecs)
         })
     }
 
@@ -54,7 +54,7 @@ impl EngineInternals {
         self.render_context.borrow_mut().release_command_buffers().unwrap();
 
         // Free resources
-        self.resource_manager.borrow_mut()
+        self.ecs.borrow_mut()
             .free_all_resources(&mut self.render_context.borrow_mut()).unwrap();
 
         // Destroy renderer
@@ -67,7 +67,7 @@ impl EngineInternals {
         scene: &Box<dyn Scene<VkContext>>
     ) -> Result<(), VkError> {
         let context = self.render_context.borrow();
-        let resource_manager = self.resource_manager.borrow();
+        let ecs = self.ecs.borrow();
         for image_index in 0..context.get_swapchain_image_count() {
             let command_buffer = context.get_graphics_command_buffer(image_index);
             unsafe {
@@ -75,7 +75,7 @@ impl EngineInternals {
                     &context.device,
                     command_buffer,
                     context.get_extent()?,
-                    &resource_manager,
+                    &ecs,
                     image_index)?;
             }
         }
@@ -108,12 +108,12 @@ impl EngineInternals {
         // Recreate everything
         unsafe {
             let mut context = self.render_context.borrow_mut();
-            let mut resource_manager = self.resource_manager.borrow_mut();
+            let mut ecs = self.ecs.borrow_mut();
             let swapchain_image_count = context.get_swapchain_image_count();
             context.recreate_surface(&core, window)?;
             context.regenerate_graphics_command_buffers()?;
             resource_bearer.reload_dynamic_resources(
-                &mut resource_manager,
+                &mut ecs,
                 &mut context,
                 swapchain_image_count)?;
         }
@@ -124,14 +124,14 @@ impl EngineInternals {
 
     pub fn render_frame(&mut self, scene: &Box<dyn Scene<VkContext>>) -> Result<PresentResult, VkError> {
         let mut context = self.render_context.borrow_mut();
-        let resource_manager = self.resource_manager.borrow();
+        let ecs = self.ecs.borrow();
         unsafe {
             let (image_index, up_to_date) = context.acquire_next_image()?;
             if !up_to_date {
                 return Ok(PresentResult::SwapchainOutOfDate);
             }
 
-            scene.prepare_frame_render(&context, image_index, &resource_manager)?;
+            scene.prepare_frame_render(&context, image_index, &ecs)?;
             context.submit_and_present()
         }
     }

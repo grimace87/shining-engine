@@ -469,6 +469,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9ea835d29036a4087793836fa931b08837ad5e957da9e23886b29586fb9b6650"
 
 [[package]]
+name = "ecs"
+version = "0.1.0"
+
+[[package]]
 name = "engine"
 version = "0.1.0"
 dependencies = [
@@ -476,8 +480,8 @@ dependencies = [
  "camera",
  "cgmath",
  "control",
+ "ecs",
  "model",
- "resource",
  "vk-shader-macros",
  "vk_renderer",
  "window",
@@ -1099,10 +1103,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "456c603be3e8d448b072f410900c09faf164fbce2d480456f50eea6e25f9c848"
 
 [[package]]
-name = "resource"
-version = "0.1.0"
-
-[[package]]
 name = "rustc-hash"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1360,9 +1360,9 @@ dependencies = [
 name = "test-app"
 version = "0.1.0"
 dependencies = [
+ "ecs",
  "engine",
  "model",
- "resource",
  "vk-shader-macros",
  "vk_renderer",
  "window",
@@ -1464,10 +1464,10 @@ version = "0.1.0"
 dependencies = [
  "ash",
  "ash-window",
+ "ecs",
  "image",
  "model",
  "raw-window-handle",
- "resource",
  "vk-shader-macros",
  "vk_renderer",
  "window",
@@ -1662,8 +1662,8 @@ checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 name = "window"
 version = "0.1.0"
 dependencies = [
+ "ecs",
  "raw-window-handle",
- "resource",
  "window",
  "winit",
 ]

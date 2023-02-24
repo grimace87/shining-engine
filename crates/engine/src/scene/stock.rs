@@ -8,7 +8,7 @@ use vk_renderer::{
     PipelineCreationData, RenderpassTarget, UboUsage, ImageWrapper
 };
 use model::{StaticVertex, COLLADA, Config};
-use resource::{ResourceManager, Handle, RawResourceBearer, Resource};
+use ecs::{EcsManager, Handle, resource::{RawResourceBearer, Resource}};
 use vk_shader_macros::include_glsl;
 use ash::{Device, vk};
 use cgmath::{Matrix4, SquareMatrix, Rad};
@@ -77,21 +77,21 @@ impl Scene<VkContext> for StockScene {
         device: &Device,
         command_buffer: vk::CommandBuffer,
         render_extent: vk::Extent2D,
-        resource_manager: &ResourceManager<VkContext>,
+        ecs: &EcsManager<VkContext>,
         swapchain_image_index: usize
     ) -> Result<(), VkError> {
 
-        let renderpass = resource_manager
+        let renderpass  = ecs
             .get_item::<RenderpassWrapper>(
                 Handle::for_resource_variation(RENDERPASS_INDEX_MAIN, swapchain_image_index as u32)
                     .unwrap())
             .unwrap();
-        let pipeline = resource_manager
+        let pipeline  = ecs
             .get_item::<PipelineWrapper>(
                 Handle::for_resource_variation(PIPELINE_INDEX_MAIN, swapchain_image_index as u32)
                     .unwrap())
             .unwrap();
-        let pipeline_layout = resource_manager
+        let pipeline_layout  = ecs
             .get_item::<vk::PipelineLayout>(
                 Handle::for_resource(PIPELINE_LAYOUT_INDEX_MAIN))
             .unwrap();
@@ -127,7 +127,7 @@ impl Scene<VkContext> for StockScene {
             command_buffer, &renderpass_begin_info, vk::SubpassContents::INLINE);
 
         // Bind the pipeline and do rendering work
-        let vertex_buffer = resource_manager
+        let vertex_buffer  = ecs
             .get_item::<BufferWrapper>(
                 Handle::for_resource(VBO_INDEX_SCENE))
             .unwrap();
@@ -178,9 +178,9 @@ impl Scene<VkContext> for StockScene {
         &self,
         context: &VkContext,
         swapchain_image_index: usize,
-        resource_manager: &ResourceManager<VkContext>
+        ecs: &EcsManager<VkContext>
     ) -> Result<(), VkError> {
-        let pipeline = resource_manager
+        let pipeline  = ecs
             .get_item::<PipelineWrapper>(
                 Handle::for_resource_variation(PIPELINE_INDEX_MAIN, swapchain_image_index as u32)
                     .unwrap())
@@ -203,7 +203,7 @@ impl RawResourceBearer<VkContext> for StockResourceBearer {
 
     fn initialise_static_resources(
         &self,
-        manager: &mut ResourceManager<VkContext>,
+        ecs: &mut EcsManager<VkContext>,
         loader: &VkContext
     ) -> Result<(), VkError> {
 
@@ -220,8 +220,8 @@ impl RawResourceBearer<VkContext> for StockResourceBearer {
             index_data: None,
             usage: BufferUsage::InitialiseOnceVertexBuffer
         };
-        let model = BufferWrapper::create(loader, &manager, &creation_data)?;
-        manager.push_new_with_handle(
+        let model = BufferWrapper::create(loader, &ecs, &creation_data)?;
+        ecs.push_new_with_handle(
             Handle::for_resource(VBO_INDEX_SCENE),
             model);
 
@@ -230,8 +230,8 @@ impl RawResourceBearer<VkContext> for StockResourceBearer {
             TextureCodec::Jpeg,
             ImageUsage::TextureSampleOnly)
             .unwrap();
-        let texture = ImageWrapper::create(loader, &manager, &creation_data)?;
-        manager.push_new_with_handle(
+        let texture = ImageWrapper::create(loader, &ecs, &creation_data)?;
+        ecs.push_new_with_handle(
             Handle::for_resource(TEXTURE_INDEX_TERRAIN),
             texture);
 
@@ -239,8 +239,8 @@ impl RawResourceBearer<VkContext> for StockResourceBearer {
             data: VERTEX_SHADER,
             stage: ShaderStage::Vertex
         };
-        let vertex_shader = vk::ShaderModule::create(loader, &manager, &creation_data)?;
-        manager.push_new_with_handle(
+        let vertex_shader = vk::ShaderModule::create(loader, &ecs, &creation_data)?;
+        ecs.push_new_with_handle(
             Handle::for_resource(SHADER_INDEX_VERTEX),
             vertex_shader);
 
@@ -248,8 +248,8 @@ impl RawResourceBearer<VkContext> for StockResourceBearer {
             data: FRAGMENT_SHADER,
             stage: ShaderStage::Fragment
         };
-        let fragment_shader = vk::ShaderModule::create(loader, &manager, &creation_data)?;
-        manager.push_new_with_handle(
+        let fragment_shader = vk::ShaderModule::create(loader, &ecs, &creation_data)?;
+        ecs.push_new_with_handle(
             Handle::for_resource(SHADER_INDEX_FRAGMENT),
             fragment_shader);
 
@@ -258,33 +258,33 @@ impl RawResourceBearer<VkContext> for StockResourceBearer {
 
     fn reload_dynamic_resources(
         &self,
-        manager: &mut ResourceManager<VkContext>,
+        ecs: &mut EcsManager<VkContext>,
         loader: &mut VkContext,
         swapchain_image_count: usize
     ) -> Result<(), VkError> {
 
         for i in 0..swapchain_image_count {
-            if let Some(item) = manager.remove_item::<RenderpassWrapper>(
+            if let Some(item)  = ecs.remove_item::<RenderpassWrapper>(
                 Handle::for_resource_variation(RENDERPASS_INDEX_MAIN, i as u32).unwrap()
             ) {
                 item.release(&loader);
             }
         }
 
-        if let Some(item) = manager.remove_item::<vk::DescriptorSetLayout>(
+        if let Some(item)  = ecs.remove_item::<vk::DescriptorSetLayout>(
             Handle::for_resource(DESCRIPTOR_SET_LAYOUT_INDEX_MAIN)
         ) {
             item.release(&loader);
         }
 
-        if let Some(item) = manager.remove_item::<vk::PipelineLayout>(
+        if let Some(item)  = ecs.remove_item::<vk::PipelineLayout>(
             Handle::for_resource(PIPELINE_LAYOUT_INDEX_MAIN)
         ) {
             item.release(&loader);
         }
 
         for i in 0..swapchain_image_count {
-            if let Some(item) = manager.remove_item::<PipelineWrapper>(
+            if let Some(item)  = ecs.remove_item::<PipelineWrapper>(
                 Handle::for_resource_variation(PIPELINE_INDEX_MAIN, i as u32).unwrap()
             ) {
                 item.release(&loader);
@@ -296,8 +296,8 @@ impl RawResourceBearer<VkContext> for StockResourceBearer {
                 target: RenderpassTarget::SwapchainImageWithDepth,
                 swapchain_image_index: i as usize
             };
-            let renderpass = RenderpassWrapper::create(loader, &manager, &creation_data)?;
-            manager.push_new_with_handle(
+            let renderpass = RenderpassWrapper::create(loader, &ecs, &creation_data)?;
+            ecs.push_new_with_handle(
                 Handle::for_resource_variation(RENDERPASS_INDEX_MAIN, i as u32)
                     .unwrap(),
                 renderpass);
@@ -306,16 +306,16 @@ impl RawResourceBearer<VkContext> for StockResourceBearer {
         let creation_data = DescriptorSetLayoutCreationData {
             ubo_usage: UboUsage::VertexShaderRead
         };
-        let descriptor_set_layout = vk::DescriptorSetLayout::create(loader, &manager, &creation_data)?;
-        manager.push_new_with_handle(
+        let descriptor_set_layout = vk::DescriptorSetLayout::create(loader, &ecs, &creation_data)?;
+        ecs.push_new_with_handle(
             Handle::for_resource(DESCRIPTOR_SET_LAYOUT_INDEX_MAIN),
             descriptor_set_layout);
 
         let creation_data = PipelineLayoutCreationData {
             descriptor_set_layout_index: DESCRIPTOR_SET_LAYOUT_INDEX_MAIN
         };
-        let pipeline_layout = vk::PipelineLayout::create(loader, &manager, &creation_data)?;
-        manager.push_new_with_handle(
+        let pipeline_layout = vk::PipelineLayout::create(loader, &ecs, &creation_data)?;
+        ecs.push_new_with_handle(
             Handle::for_resource(PIPELINE_LAYOUT_INDEX_MAIN),
             pipeline_layout);
 
@@ -332,8 +332,8 @@ impl RawResourceBearer<VkContext> for StockResourceBearer {
                 ubo_size_bytes: std::mem::size_of::<StockUbo>(),
                 swapchain_image_index: i as usize
             };
-            let pipeline = PipelineWrapper::create(loader, &manager, &creation_data)?;
-            manager.push_new_with_handle(
+            let pipeline = PipelineWrapper::create(loader, &ecs, &creation_data)?;
+            ecs.push_new_with_handle(
                 Handle::for_resource_variation(PIPELINE_INDEX_MAIN, i as u32)
                     .unwrap(),
                 pipeline);

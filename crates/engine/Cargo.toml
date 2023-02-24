@@ -10,7 +10,7 @@ cgmath = { workspace = true }
 camera = { path = "../camera" }
 control = { path = "../control" }
 model = { path = "../model" }
-resource = { path = "../resource" }
+ecs = { path = "../ecs" }
 vk_renderer = { path = "../vk_renderer" }
 window = { path = "../window" }
 

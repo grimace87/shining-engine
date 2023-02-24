@@ -14,8 +14,9 @@ use window::{
 use std::fmt::Debug;
 
 use model::{COLLADA, Config, StaticVertex};
-use resource::{
-    ResourceManager, RawResourceBearer, Resource, Handle
+use ecs::{
+    EcsManager, Handle,
+    resource::{RawResourceBearer, Resource}
 };
 
 const VBO_INDEX_SCENE: u32 = 0;
@@ -32,7 +33,7 @@ impl RawResourceBearer<VkContext> for ResourceSource {
 
     fn initialise_static_resources(
         &self,
-        manager: &mut ResourceManager<VkContext>,
+        ecs: &mut EcsManager<VkContext>,
         loader: &VkContext
     ) -> Result<(), VkError> {
 
@@ -50,8 +51,8 @@ impl RawResourceBearer<VkContext> for ResourceSource {
             index_data: None,
             usage: BufferUsage::InitialiseOnceVertexBuffer
         };
-        let vertex_buffer = BufferWrapper::create(loader, &manager, &creation_data)?;
-        manager.push_new_with_handle(
+        let vertex_buffer = BufferWrapper::create(loader, &ecs, &creation_data)?;
+        ecs.push_new_with_handle(
             Handle::for_resource(VBO_INDEX_SCENE),
             vertex_buffer);
 
@@ -60,8 +61,8 @@ impl RawResourceBearer<VkContext> for ResourceSource {
             TextureCodec::Jpeg,
             ImageUsage::TextureSampleOnly)
             .unwrap();
-        let texture = ImageWrapper::create(loader, &manager, &creation_data)?;
-        manager.push_new_with_handle(
+        let texture = ImageWrapper::create(loader, &ecs, &creation_data)?;
+        ecs.push_new_with_handle(
             Handle::for_resource(TEXTURE_INDEX_TERRAIN),
             texture);
 
@@ -70,7 +71,7 @@ impl RawResourceBearer<VkContext> for ResourceSource {
 
     fn reload_dynamic_resources(
         &self,
-        _manager: &mut ResourceManager<VkContext>,
+        _ecs: &mut EcsManager<VkContext>,
         _loader: &mut VkContext,
         _swapchain_image_count: usize
     ) -> Result<(), VkError> {
@@ -94,13 +95,13 @@ impl VulkanTestApp {
             let mut core = VkCore::new(window, vec![]).unwrap();
             let mut context = VkContext::new(&core, window).unwrap();
             let resource_source: Box<dyn RawResourceBearer<VkContext>> = Box::new(ResourceSource {});
-            let mut resource_manager = ResourceManager::new();
+            let mut ecs = EcsManager::new();
             resource_source
-                .initialise_static_resources(&mut resource_manager, &context)
+                .initialise_static_resources(&mut ecs, &context)
                 .unwrap();
 
             // Release
-            resource_manager.free_all_resources(&context).unwrap();
+            ecs.free_all_resources(&context).unwrap();
             context.teardown();
             core.teardown();
         }

@@ -10,7 +10,7 @@ raw-window-handle = { workspace = true }
 vk-shader-macros = { workspace = true }
 image = { version = "0.24.4", default-features = false, features = ["jpeg", "png"] }
 model = { path = "../model" }
-resource = { path = "../resource" }
+ecs = { path = "../ecs" }
 
 [dev-dependencies]
 vk_renderer = { path = "." }
