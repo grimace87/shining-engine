@@ -6,18 +6,21 @@
 /// The test creates a window, creates a VkCore and a VkContext, and then creates a bunch of memory
 /// objects. Then it tears everything down.
 
-use vk_renderer::{VkCore, VkContext, VkError, TextureCodec, ResourceUtilities, BufferUsage, ImageUsage, VboCreationData, BufferWrapper, ImageWrapper};
+use vk_renderer::{
+    VkCore, VkContext, TextureCodec, ResourceUtilities, BufferUsage, ImageUsage, VboCreationData, BufferWrapper,
+    ImageWrapper
+};
 use window::{
     WindowEventLooper, RenderCycleEvent, RenderEventHandler, ControlFlow, Event, WindowEvent,
     WindowEventHandler, WindowStateEvent, Window, MessageProxy, WindowCommand
 };
-use std::fmt::Debug;
-
 use model::{COLLADA, Config, StaticVertex};
 use ecs::{
     EcsManager, Handle,
     resource::{RawResourceBearer, Resource}
 };
+use error::EngineError;
+use std::fmt::Debug;
 
 const VBO_INDEX_SCENE: u32 = 0;
 const SCENE_MODEL_BYTES: &[u8] =
@@ -35,7 +38,7 @@ impl RawResourceBearer<VkContext> for ResourceSource {
         &self,
         ecs: &mut EcsManager<VkContext>,
         loader: &VkContext
-    ) -> Result<(), VkError> {
+    ) -> Result<(), EngineError> {
 
         let scene_model = {
             let collada = COLLADA::new(&SCENE_MODEL_BYTES);
@@ -74,7 +77,7 @@ impl RawResourceBearer<VkContext> for ResourceSource {
         _ecs: &mut EcsManager<VkContext>,
         _loader: &mut VkContext,
         _swapchain_image_count: usize
-    ) -> Result<(), VkError> {
+    ) -> Result<(), EngineError> {
         Ok(())
     }
 }

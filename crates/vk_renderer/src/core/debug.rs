@@ -1,5 +1,5 @@
 
-use crate::VkError;
+use error::EngineError;
 use ash::{
     vk,
     Entry,
@@ -26,7 +26,7 @@ unsafe extern "system" fn vulkan_debug_utils_callback(
 pub unsafe fn make_debug_utils(
     entry: &Entry,
     instance: &Instance
-) -> Result<Option<(DebugUtils, vk::DebugUtilsMessengerEXT)>, VkError> {
+) -> Result<Option<(DebugUtils, vk::DebugUtilsMessengerEXT)>, EngineError> {
     if cfg!(debug_assertions) {
         let debug_utils = DebugUtils::new(entry, instance);
         let debug_create_info = vk::DebugUtilsMessengerCreateInfoEXT {
@@ -41,7 +41,7 @@ pub unsafe fn make_debug_utils(
         let utils_messenger = debug_utils
             .create_debug_utils_messenger(&debug_create_info, None)
             .map_err(|e| {
-                VkError::OpFailed(format!("Debug messenger creation failed: {:?}", e))
+                EngineError::OpFailed(format!("Debug messenger creation failed: {:?}", e))
             })?;
         Ok(Some((debug_utils, utils_messenger)))
     } else {

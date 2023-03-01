@@ -1,9 +1,10 @@
 
 use crate::{
-    VkContext, VkError, BufferWrapper, RenderpassWrapper, ImageWrapper, BufferUsage,
+    VkContext, BufferWrapper, RenderpassWrapper, ImageWrapper, BufferUsage,
     VboCreationData
 };
 use ecs::{EcsManager, Handle, resource::Resource};
+use error::EngineError;
 use ash::vk;
 use std::ffi::CString;
 
@@ -43,7 +44,7 @@ impl Resource<VkContext> for PipelineWrapper {
         loader: &VkContext,
         ecs: &EcsManager<VkContext>,
         data: &PipelineCreationData
-    ) -> Result<Self, VkError> {
+    ) -> Result<Self, EngineError> {
 
         let render_extent = loader.get_extent()?;
         let mut pipeline = PipelineWrapper::new();
@@ -121,7 +122,7 @@ impl PipelineWrapper {
         texture_index: u32,
         depth_test: bool,
         render_extent: vk::Extent2D
-    ) -> Result<(), VkError> {
+    ) -> Result<(), EngineError> {
 
         // Query renderpass and pipeline layout
         let renderpass_wrapper  = ecs
@@ -235,7 +236,7 @@ impl PipelineWrapper {
         let sampler: vk::Sampler = //TODO - Vec from texture_image_views.iter().map(|_| ...).collect()
             context.device
                 .create_sampler(&sampler_info, None)
-                .map_err(|e| VkError::OpFailed(format!("Error creating sampler: {:?}", e)))?;
+                .map_err(|e| EngineError::OpFailed(format!("Error creating sampler: {:?}", e)))?;
 
         // All the stuff around descriptors
         let pool_sizes = [
@@ -254,7 +255,7 @@ impl PipelineWrapper {
         let descriptor_pool = context.device
             .create_descriptor_pool(&descriptor_pool_info, None)
             .map_err(|e|
-                VkError::OpFailed(format!("Error creating descriptor pool: {:?}", e))
+                EngineError::OpFailed(format!("Error creating descriptor pool: {:?}", e))
             )?;
         let descriptor_layouts = vec![*descriptor_set_layout];
         let descriptor_set_alloc_info = vk::DescriptorSetAllocateInfo::builder()
@@ -263,7 +264,7 @@ impl PipelineWrapper {
         let descriptor_set = context.device
             .allocate_descriptor_sets(&descriptor_set_alloc_info)
             .map_err(|e|
-                VkError::OpFailed(format!("Failed allocating descriptor sets: {:?}", e))
+                EngineError::OpFailed(format!("Failed allocating descriptor sets: {:?}", e))
             )?
             [0];
 
@@ -362,7 +363,7 @@ impl PipelineWrapper {
                 &[pipeline_create_info.build()],
                 None)
             .map_err(|e|
-                VkError::OpFailed(format!("{:?}", e))
+                EngineError::OpFailed(format!("{:?}", e))
             )?;
 
         self.vertex_buffer = vbo_handle;
@@ -415,7 +416,7 @@ impl PipelineWrapper {
         context: &VkContext,
         data_ptr: *const u8,
         size_bytes: usize
-    ) -> Result<(), VkError> {
+    ) -> Result<(), EngineError> {
         let (allocator, _) = context.get_mem_allocator();
         self.uniform_buffer.update::<u8>(
             allocator,

@@ -1,7 +1,8 @@
 
 use crate::mem::{MemoryAllocator, ManagesBufferMemory, MemoryAllocation, ManagesMemoryTransfers};
-use crate::{VkError, Queue};
+use crate::Queue;
 
+use error::EngineError;
 use ash::vk;
 
 impl ManagesBufferMemory for MemoryAllocator {
@@ -16,7 +17,7 @@ impl ManagesBufferMemory for MemoryAllocator {
         host_accessible: bool,
         init_data: Option<*const u8>,
         init_data_size_bytes: usize
-    ) -> Result<MemoryAllocation, VkError> {
+    ) -> Result<MemoryAllocation, EngineError> {
 
         // Allocate the final memory to be used for backing the buffer
         let requirements = self.device.get_buffer_memory_requirements(*buffer);
@@ -29,7 +30,7 @@ impl ManagesBufferMemory for MemoryAllocator {
             .memory_type_index(memory_type);
         let memory = self.device.allocate_memory(&allocate_info, None)
             .map_err(|e| {
-                VkError::OpFailed(format!("Error allocating buffer memory: {:?}", e))
+                EngineError::OpFailed(format!("Error allocating buffer memory: {:?}", e))
             })?;
         let allocation = MemoryAllocation {
             memory,
@@ -39,7 +40,7 @@ impl ManagesBufferMemory for MemoryAllocator {
         // Bind the buffer's memory
         self.device.bind_buffer_memory(*buffer, memory, 0)
             .map_err(|e| {
-                VkError::OpFailed(format! ("Error binding memory to image: {:?}", e))
+                EngineError::OpFailed(format! ("Error binding memory to image: {:?}", e))
             })?;
 
         // If memory needs to be initialised with data, do it via a separate function that handles
@@ -60,7 +61,7 @@ impl ManagesBufferMemory for MemoryAllocator {
         &self,
         buffer: vk::Buffer,
         allocation: &MemoryAllocation
-    ) -> Result<(), VkError> {
+    ) -> Result<(), EngineError> {
         self.device.destroy_buffer(buffer, None);
         self.device.free_memory(allocation.memory, None);
         Ok(())

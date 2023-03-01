@@ -1,7 +1,8 @@
 
-use crate::{VkError, VkContext};
+use crate::VkContext;
 use crate::mem::{MemoryAllocator, MemoryAllocation, ManagesBufferMemory};
 use ecs::{EcsManager, resource::Resource};
+use error::EngineError;
 use ash::vk;
 
 /// ImageUsage enum
@@ -46,7 +47,7 @@ impl Resource<VkContext> for BufferWrapper {
         loader: &VkContext,
         _ecs: &EcsManager<VkContext>,
         data: &VboCreationData
-    ) -> Result<Self, VkError> {
+    ) -> Result<Self, EngineError> {
         let buffer = unsafe {
             BufferWrapper::new(
                 loader,
@@ -63,7 +64,7 @@ impl Resource<VkContext> for BufferWrapper {
         unsafe {
             allocator.destroy_buffer(self.buffer, &self.allocation)
                 .map_err(|e| {
-                    VkError::OpFailed(format!("Error freeing buffer: {:?}", e))
+                    EngineError::OpFailed(format!("Error freeing buffer: {:?}", e))
                 })
                 .unwrap();
         }
@@ -79,7 +80,7 @@ impl BufferWrapper {
         size_bytes: usize,
         element_count: usize,
         init_data: Option<*const u8>
-    ) -> Result<BufferWrapper, VkError> {
+    ) -> Result<BufferWrapper, EngineError> {
 
         let transfer_usage = match init_data.is_some() {
             true => vk::BufferUsageFlags::TRANSFER_DST,
@@ -103,7 +104,7 @@ impl BufferWrapper {
             .build();
         let buffer = context.device.create_buffer(&buffer_create_info, None)
             .map_err(|e| {
-                VkError::OpFailed(format!("Error creating buffer: {:?}", e))
+                EngineError::OpFailed(format!("Error creating buffer: {:?}", e))
             })?;
 
         let (allocator, transfer_queue) = context.get_mem_allocator();
@@ -139,11 +140,11 @@ impl BufferWrapper {
         dst_offset_elements: isize,
         src_ptr: *const T,
         element_count: usize
-    ) -> Result<(), VkError> {
+    ) -> Result<(), EngineError> {
         let offset_bytes = dst_offset_elements as usize * std::mem::size_of::<T>();
         let update_range_bytes = element_count * std::mem::size_of::<T>();
         if offset_bytes + update_range_bytes > self.size_bytes {
-            return Err(VkError::EngineError(format!(
+            return Err(EngineError::EngineError(format!(
                 "Attempting to update buffer outside of range: offset {}, range {}, size {}",
                 offset_bytes,
                 update_range_bytes,

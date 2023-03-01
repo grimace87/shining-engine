@@ -1,14 +1,15 @@
 
 use crate::Scene;
 use camera::PlayerCamera;
+use ecs::{EcsManager, Handle, resource::{RawResourceBearer, Resource}};
+use error::EngineError;
+use model::{StaticVertex, COLLADA, Config};
 use vk_renderer::{
-    VkContext, VkError, TextureCodec, ResourceUtilities, RenderpassWrapper, PipelineWrapper,
+    VkContext, TextureCodec, ResourceUtilities, RenderpassWrapper, PipelineWrapper,
     BufferWrapper, BufferUsage, ImageUsage, VboCreationData, ShaderCreationData, ShaderStage,
     RenderpassCreationData, DescriptorSetLayoutCreationData, PipelineLayoutCreationData,
     PipelineCreationData, RenderpassTarget, UboUsage, ImageWrapper
 };
-use model::{StaticVertex, COLLADA, Config};
-use ecs::{EcsManager, Handle, resource::{RawResourceBearer, Resource}};
 use vk_shader_macros::include_glsl;
 use ash::{Device, vk};
 use cgmath::{Matrix4, SquareMatrix, Rad};
@@ -79,7 +80,7 @@ impl Scene<VkContext> for StockScene {
         render_extent: vk::Extent2D,
         ecs: &EcsManager<VkContext>,
         swapchain_image_index: usize
-    ) -> Result<(), VkError> {
+    ) -> Result<(), EngineError> {
 
         let renderpass  = ecs
             .get_item::<RenderpassWrapper>(
@@ -99,7 +100,7 @@ impl Scene<VkContext> for StockScene {
         // Begin recording
         let begin_info = vk::CommandBufferBeginInfo::builder();
         device.begin_command_buffer(command_buffer, &begin_info)
-            .map_err(|e| VkError::OpFailed(format!("{:?}", e)))?;
+            .map_err(|e| EngineError::OpFailed(format!("{:?}", e)))?;
 
         // Begin the renderpass
         let clear_values = [
@@ -159,7 +160,7 @@ impl Scene<VkContext> for StockScene {
 
         // End recording
         device.end_command_buffer(command_buffer)
-            .map_err(|e| VkError::OpFailed(format!("{:?}", e)))?;
+            .map_err(|e| EngineError::OpFailed(format!("{:?}", e)))?;
         Ok(())
     }
 
@@ -179,7 +180,7 @@ impl Scene<VkContext> for StockScene {
         context: &VkContext,
         swapchain_image_index: usize,
         ecs: &EcsManager<VkContext>
-    ) -> Result<(), VkError> {
+    ) -> Result<(), EngineError> {
         let pipeline  = ecs
             .get_item::<PipelineWrapper>(
                 Handle::for_resource_variation(PIPELINE_INDEX_MAIN, swapchain_image_index as u32)
@@ -205,7 +206,7 @@ impl RawResourceBearer<VkContext> for StockResourceBearer {
         &self,
         ecs: &mut EcsManager<VkContext>,
         loader: &VkContext
-    ) -> Result<(), VkError> {
+    ) -> Result<(), EngineError> {
 
         let scene_model = {
             let collada = COLLADA::new(&SCENE_MODEL_BYTES);
@@ -261,7 +262,7 @@ impl RawResourceBearer<VkContext> for StockResourceBearer {
         ecs: &mut EcsManager<VkContext>,
         loader: &mut VkContext,
         swapchain_image_count: usize
-    ) -> Result<(), VkError> {
+    ) -> Result<(), EngineError> {
 
         for i in 0..swapchain_image_count {
             if let Some(item)  = ecs.remove_item::<RenderpassWrapper>(

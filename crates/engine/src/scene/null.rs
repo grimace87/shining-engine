@@ -1,6 +1,7 @@
 
 use ecs::{EcsManager, resource::RawResourceBearer};
-use vk_renderer::{VkContext, VkError};
+use error::EngineError;
+use vk_renderer::VkContext;
 use ash::{Device, vk};
 use crate::Scene;
 
@@ -27,7 +28,7 @@ impl Scene<VkContext> for NullScene {
         _render_extent: vk::Extent2D,
         _ecs: &EcsManager<VkContext>,
         _swapchain_image_index: usize
-    ) -> Result<(), VkError> {
+    ) -> Result<(), EngineError> {
         Ok(())
     }
 
@@ -38,7 +39,7 @@ impl Scene<VkContext> for NullScene {
         _context: &VkContext,
         _swapchain_image_index: usize,
         _ecs: &EcsManager<VkContext>
-    ) -> Result<(), VkError> {
+    ) -> Result<(), EngineError> {
         Ok(())
     }
 }
@@ -55,7 +56,7 @@ impl RawResourceBearer<VkContext> for NullResourceBearer {
         &self,
         _ecs: &mut EcsManager<VkContext>,
         _loader: &VkContext
-    ) -> Result<(), VkError> {
+    ) -> Result<(), EngineError> {
         Ok(())
     }
 
@@ -64,7 +65,7 @@ impl RawResourceBearer<VkContext> for NullResourceBearer {
         _ecs: &mut EcsManager<VkContext>,
         _loader: &mut VkContext,
         _swapchain_image_count: usize
-    ) -> Result<(), VkError> {
+    ) -> Result<(), EngineError> {
         Ok(())
     }
 }

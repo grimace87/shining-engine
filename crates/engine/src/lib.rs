@@ -10,5 +10,6 @@ pub use scene::{
     stock::{StockScene, StockResourceBearer},
     null::NullScene
 };
+pub use error::EngineError;
 pub use timer::{Timer, stock::StockTimer};
-pub use vk_renderer::{VkError, VkContext};
+pub use vk_renderer::VkContext;

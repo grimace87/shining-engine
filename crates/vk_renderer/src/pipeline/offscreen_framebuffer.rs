@@ -1,6 +1,7 @@
 
-use crate::{VkContext, VkError, ImageWrapper, TexturePixelFormat, ImageUsage};
+use crate::{VkContext, ImageWrapper, TexturePixelFormat, ImageUsage};
 use ecs::{EcsManager, resource::Resource};
+use error::EngineError;
 
 /// OffscreenFramebufferData struct
 /// Information needed to prepare a non-swapchain framebuffer
@@ -29,7 +30,7 @@ impl Resource<VkContext> for OffscreenFramebufferWrapper {
         loader: &VkContext,
         _ecs: &EcsManager<VkContext>,
         data: &OffscreenFramebufferData
-    ) -> Result<Self, VkError> {
+    ) -> Result<Self, EngineError> {
         let framebuffer = unsafe {
             OffscreenFramebufferWrapper::new(
                 loader,
@@ -57,7 +58,7 @@ impl OffscreenFramebufferWrapper {
         height: u32,
         color_format: TexturePixelFormat,
         depth_format: TexturePixelFormat
-    ) -> Result<OffscreenFramebufferWrapper, VkError> {
+    ) -> Result<OffscreenFramebufferWrapper, EngineError> {
         let color_texture = ImageWrapper::new(
             context,
             ImageUsage::OffscreenRenderSampleColorWriteDepth,

@@ -1,5 +1,6 @@
 
-use crate::{VkCore, VkError};
+use crate::VkCore;
+use error::EngineError;
 use ash::{vk, Device, extensions::khr::{Swapchain}};
 use std::os::raw::c_char;
 
@@ -7,7 +8,7 @@ use std::os::raw::c_char;
 /// creates a single graphics queue and single transfer queue
 pub unsafe fn make_device_resources(
     core: &VkCore
-) -> Result<Device, VkError> {
+) -> Result<Device, EngineError> {
 
     // Find queue indices for graphics and transfer (ideally different but could be the same)
     let queue_family_properties = core.instance
@@ -58,7 +59,7 @@ pub unsafe fn make_device_resources(
             &device_create_info,
             None)
         .map_err(|e| {
-            VkError::OpFailed(format!("{:?}", e))
+            EngineError::OpFailed(format!("{:?}", e))
         })?;
 
     Ok(device)

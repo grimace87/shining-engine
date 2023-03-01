@@ -1,22 +1,8 @@
 
-use crate::{
-    Handle, EcsManager,
-    resource::{Resource, ResourceLoader}
-};
+use crate::{Handle, EcsManager, resource::Resource};
+use error::EngineError;
 
 pub struct NullResourceLoader;
-
-impl ResourceLoader for NullResourceLoader {
-    type LoadError = String;
-
-    fn get_current_swapchain_extent(&self) -> Result<(u32, u32), String> {
-        Ok((1, 1))
-    }
-
-    fn make_error(message: String) -> String {
-        message
-    }
-}
 
 struct SomeResource;
 
@@ -27,7 +13,7 @@ impl Resource<NullResourceLoader> for SomeResource {
         _loader: &NullResourceLoader,
         _ecs: &EcsManager<NullResourceLoader>,
         _data: &()
-    ) -> Result<Self, String> {
+    ) -> Result<Self, EngineError> {
         Ok(SomeResource)
     }
 

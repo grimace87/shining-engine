@@ -1,6 +1,6 @@
 
 use crate::core::FeatureDeclaration;
-use crate::VkError;
+use error::EngineError;
 use ash::{vk, extensions::khr::Surface};
 
 /// Selects the physical device to use, so long as there is one that supports everything needed
@@ -9,15 +9,15 @@ pub unsafe fn select_physical_device(
     surface_loader: &Surface,
     surface: &vk::SurfaceKHR,
     features: &[FeatureDeclaration]
-) -> Result<(vk::PhysicalDevice, u32, u32, vk::PhysicalDeviceFeatures), VkError> {
+) -> Result<(vk::PhysicalDevice, u32, u32, vk::PhysicalDeviceFeatures), EngineError> {
 
     let physical_devices = instance
         .enumerate_physical_devices()
         .map_err(|e| {
-            VkError::OpFailed(format!("{:?}", e))
+            EngineError::OpFailed(format!("{:?}", e))
         })?;
     if physical_devices.is_empty() {
-        return Err(VkError::OpFailed(
+        return Err(EngineError::OpFailed(
             String::from("No physical devices found")));
     }
 
@@ -66,7 +66,7 @@ pub unsafe fn select_physical_device(
         }
     }
 
-    Err(VkError::OpFailed(
+    Err(EngineError::OpFailed(
         String::from("Could not find a suitable physical device")))
 }
 

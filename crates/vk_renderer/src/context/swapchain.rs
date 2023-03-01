@@ -1,6 +1,7 @@
 
-use crate::{VkCore, VkContext, VkError, ImageWrapper, ImageUsage, TexturePixelFormat};
+use crate::{VkCore, VkContext, ImageWrapper, ImageUsage, TexturePixelFormat};
 use ecs::resource::Resource;
+use error::EngineError;
 use ash::{
     vk,
     Device,
@@ -41,7 +42,7 @@ impl SwapchainWrapper {
         surface_fn: &Surface,
         surface: vk::SurfaceKHR,
         extent: vk::Extent2D
-    ) -> Result<SwapchainWrapper, VkError> {
+    ) -> Result<SwapchainWrapper, EngineError> {
         let (swapchain, surface_format) = Self::create_swapchain(
             core,
             surface_fn,
@@ -87,9 +88,9 @@ impl SwapchainWrapper {
         self.image_views.len()
     }
 
-    pub fn get_image_view(&self, index: usize) -> Result<vk::ImageView, VkError> {
+    pub fn get_image_view(&self, index: usize) -> Result<vk::ImageView, EngineError> {
         if index >= self.image_views.len() {
-            return Err(VkError::EngineError(format!("Bad swapchain index: {}", index)));
+            return Err(EngineError::EngineError(format!("Bad swapchain index: {}", index)));
         }
         Ok(self.image_views[index])
     }
@@ -112,7 +113,7 @@ impl SwapchainWrapper {
         surface: vk::SurfaceKHR,
         swapchain_fn: &Swapchain,
         previous_swapchain: vk::SwapchainKHR
-    ) -> Result<(vk::SwapchainKHR, vk::SurfaceFormatKHR), VkError> {
+    ) -> Result<(vk::SwapchainKHR, vk::SurfaceFormatKHR), EngineError> {
 
         // Check for support and get some known-supported parameters
         let (
@@ -143,7 +144,7 @@ impl SwapchainWrapper {
             .old_swapchain(previous_swapchain);
         let swapchain = swapchain_fn.create_swapchain(&swapchain_create_info, None)
             .map_err(|e| {
-                VkError::OpFailed(format!("{:?}", e))
+                EngineError::OpFailed(format!("{:?}", e))
             })?;
 
         Ok((swapchain, surface_format))
@@ -154,11 +155,11 @@ impl SwapchainWrapper {
         device: &Device,
         swapchain_fn: &Swapchain,
         swapchain: vk::SwapchainKHR
-    ) -> Result<Vec<vk::ImageView>, VkError> {
+    ) -> Result<Vec<vk::ImageView>, EngineError> {
         // Make the image views over the images
         let swapchain_images = swapchain_fn.get_swapchain_images(swapchain)
             .map_err(|e| {
-                VkError::OpFailed(format!("{:?}", e))
+                EngineError::OpFailed(format!("{:?}", e))
             })?;
         let image_views: Vec<_> = swapchain_images.iter()
             .map(|image| {
@@ -176,7 +177,7 @@ impl SwapchainWrapper {
                 device.create_image_view(&image_view_create_info, None)
                     .map_err(|e| {
                         format!("Error creating image views for swapchain: {:?}", e);
-                        VkError::OpFailed(format!("{:?}", e))
+                        EngineError::OpFailed(format!("{:?}", e))
                     })
                     .unwrap()
             })
@@ -189,31 +190,31 @@ impl SwapchainWrapper {
         core: &VkCore,
         surface_fn: &Surface,
         surface: vk::SurfaceKHR
-    ) -> Result<(u32, vk::Extent2D, vk::SurfaceTransformFlagsKHR), VkError> {
+    ) -> Result<(u32, vk::Extent2D, vk::SurfaceTransformFlagsKHR), EngineError> {
         let physical_device = core.physical_device;
         let graphics_queue_family_index = core.graphics_queue_family_index;
 
         let present_supported = surface_fn
             .get_physical_device_surface_support(physical_device, graphics_queue_family_index, surface)
             .map_err(|e| {
-                VkError::OpFailed(format!("{:?}", e))
+                EngineError::OpFailed(format!("{:?}", e))
             })?;
         if !present_supported {
-            return Err(VkError::OpFailed(
+            return Err(EngineError::OpFailed(
                 String::from("Presentation not supported by selected graphics queue family")));
         }
 
         let surface_capabilities = surface_fn
             .get_physical_device_surface_capabilities(physical_device, surface)
             .map_err(|e| {
-                VkError::OpFailed(format!("{:?}", e))
+                EngineError::OpFailed(format!("{:?}", e))
             })?;
 
         let max_too_small = surface_capabilities.max_image_count != 0 &&
             surface_capabilities.max_image_count < MIN_SWAPCHAIN_SIZE;
         let min_too_large = surface_capabilities.min_image_count > MAX_SWAPCHAIN_SIZE;
         if max_too_small || min_too_large {
-            return Err(VkError::OpFailed(
+            return Err(EngineError::OpFailed(
                 String::from("Requested swapchain size is not supported")));
         }
 
@@ -231,14 +232,14 @@ impl SwapchainWrapper {
         physical_device: vk::PhysicalDevice,
         surface_fn: &Surface,
         surface: vk::SurfaceKHR
-    ) -> Result<vk::PresentModeKHR, VkError> {
+    ) -> Result<vk::PresentModeKHR, EngineError> {
         let surface_present_modes = surface_fn
             .get_physical_device_surface_present_modes(physical_device, surface)
             .map_err(|e| {
-                VkError::OpFailed(format!("{:?}", e))
+                EngineError::OpFailed(format!("{:?}", e))
             })?;
         if !surface_present_modes.contains(&vk::PresentModeKHR::FIFO) {
-            return Err(VkError::OpFailed(
+            return Err(EngineError::OpFailed(
                 String::from(
                     "FIFO presentation mode not supported by selected graphics queue family")));
         }
@@ -250,14 +251,14 @@ impl SwapchainWrapper {
         physical_device: vk::PhysicalDevice,
         surface_fn: &Surface,
         surface: vk::SurfaceKHR
-    ) -> Result<vk::SurfaceFormatKHR, VkError> {
+    ) -> Result<vk::SurfaceFormatKHR, EngineError> {
         let surface_formats = surface_fn
             .get_physical_device_surface_formats(physical_device, surface)
             .map_err(|e| {
-                VkError::OpFailed(format!("{:?}", e))
+                EngineError::OpFailed(format!("{:?}", e))
             })?;
         if surface_formats.is_empty() {
-            return Err(VkError::OpFailed(
+            return Err(EngineError::OpFailed(
                 String::from("No surface formats supported")));
         }
         let index_of_desired = surface_formats.iter().position(|f| {

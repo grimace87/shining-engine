@@ -9,8 +9,9 @@ vk-shader-macros = { workspace = true }
 cgmath = { workspace = true }
 camera = { path = "../camera" }
 control = { path = "../control" }
-model = { path = "../model" }
 ecs = { path = "../ecs" }
+error = { path = "../error" }
+model = { path = "../model" }
 vk_renderer = { path = "../vk_renderer" }
 window = { path = "../window" }
 

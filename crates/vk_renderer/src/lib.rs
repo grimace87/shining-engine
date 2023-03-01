@@ -21,12 +21,3 @@ pub use pipeline::{
     renderpass::{RenderpassWrapper, RenderpassTarget, RenderpassCreationData},
     offscreen_framebuffer::{OffscreenFramebufferWrapper, OffscreenFramebufferData}
 };
-
-#[derive(Debug)]
-pub enum VkError {
-    OpFailed(String),
-    MissingResource(String),
-    Compatibility(String),
-    EngineError(String),
-    UserError(String)
-}

@@ -2,8 +2,8 @@ mod image;
 mod buffer;
 mod transfer;
 
-use crate::{VkError, Queue};
-
+use crate::Queue;
+use error::EngineError;
 use ash::{Device, Instance, vk};
 
 const BULK_MEMORY_USABLE_MINIMUM: vk::DeviceSize = 536_870_912;
@@ -19,13 +19,13 @@ pub trait ManagesBufferMemory {
         host_accessible: bool,
         init_data: Option<*const u8>,
         init_data_size_bytes: usize
-    ) -> Result<MemoryAllocation, VkError>;
+    ) -> Result<MemoryAllocation, EngineError>;
 
     unsafe fn destroy_buffer(
         &self,
         buffer: vk::Buffer,
         allocation: &MemoryAllocation
-    ) -> Result<(), VkError>;
+    ) -> Result<(), EngineError>;
 }
 
 /// Trait indicating that this type can create images and back them with memory
@@ -41,13 +41,13 @@ pub trait ManagesImageMemory {
         init_layer_data: Option<&[Vec<u8>]>,
         initialising_layout: vk::ImageLayout,
         expected_layout: vk::ImageLayout
-    ) -> Result<MemoryAllocation, VkError>;
+    ) -> Result<MemoryAllocation, EngineError>;
 
     unsafe fn destroy_image(
         &self,
         image: vk::Image,
         allocation: &MemoryAllocation
-    ) -> Result<(), VkError>;
+    ) -> Result<(), EngineError>;
 }
 
 /// Trait indicating that this type can perform smart initialisation of image memory, handling
@@ -61,14 +61,14 @@ pub trait ManagesMemoryTransfers {
         allocation: &MemoryAllocation,
         init_data: *const u8,
         data_size_bytes: usize
-    ) -> Result<(), VkError>;
+    ) -> Result<(), EngineError>;
 
     unsafe fn transfer_data_to_new_buffer_without_staging_buffer(
         &self,
         allocation: &MemoryAllocation,
         init_data: *const u8,
         data_size_bytes: usize
-    ) -> Result<(), VkError>;
+    ) -> Result<(), EngineError>;
 
     unsafe fn transfer_data_to_new_buffer_with_staging_buffer(
         &self,
@@ -76,7 +76,7 @@ pub trait ManagesMemoryTransfers {
         buffer: &vk::Buffer,
         init_data: *const u8,
         data_size_bytes: usize
-    ) -> Result<(), VkError>;
+    ) -> Result<(), EngineError>;
 
     unsafe fn transition_image_layout(
         &self,
@@ -85,7 +85,7 @@ pub trait ManagesMemoryTransfers {
         aspect: vk::ImageAspectFlags,
         old_layout: vk::ImageLayout,
         new_layout: vk::ImageLayout
-    ) -> Result<(), VkError>;
+    ) -> Result<(), EngineError>;
 
     unsafe fn transfer_data_to_new_texture(
         &self,
@@ -97,7 +97,7 @@ pub trait ManagesMemoryTransfers {
         expected_layout: vk::ImageLayout,
         allocation: &MemoryAllocation,
         layer_data: &[Vec<u8>]
-    ) -> Result<(), VkError>;
+    ) -> Result<(), EngineError>;
 
     unsafe fn transfer_data_to_new_texture_without_staging_buffer(
         &self,
@@ -107,7 +107,7 @@ pub trait ManagesMemoryTransfers {
         expected_layout: vk::ImageLayout,
         allocation: &MemoryAllocation,
         layer_data: &[Vec<u8>]
-    ) -> Result<(), VkError>;
+    ) -> Result<(), EngineError>;
 
     unsafe fn transfer_data_to_new_texture_with_staging_buffer(
         &self,
@@ -118,7 +118,7 @@ pub trait ManagesMemoryTransfers {
         aspect: vk::ImageAspectFlags,
         expected_layout: vk::ImageLayout,
         layer_data: &[Vec<u8>]
-    ) -> Result<(), VkError>;
+    ) -> Result<(), EngineError>;
 }
 
 pub struct MemoryAllocation {
@@ -187,7 +187,7 @@ pub struct MemoryAllocator {
 /// limit their use of device-local memory, hoping that other memory is at least nearly as fast.
 impl MemoryAllocator {
 
-    pub unsafe fn new(allocator_info: MemoryAllocatorCreateInfo) -> Result<Self, VkError> {
+    pub unsafe fn new(allocator_info: MemoryAllocatorCreateInfo) -> Result<Self, EngineError> {
 
         // Gather some info on the device's memory; will decide how to allocate memory later
         let memory_properties = allocator_info.instance
@@ -221,7 +221,7 @@ impl MemoryAllocator {
     /// - Staging buffer memory (buffers written to by CPU and only immediately used in a transfer)
     unsafe fn select_memory_types(
         memory_properties: vk::PhysicalDeviceMemoryProperties
-    ) -> Result<MemoryAllocationParameters, VkError> {
+    ) -> Result<MemoryAllocationParameters, EngineError> {
         let mut has_device_local_only = false;
         let mut device_local_only_index: u32 = 0;
         let mut device_local_only_size: vk::DeviceSize = 0;
@@ -273,9 +273,9 @@ impl MemoryAllocator {
         if !has_host_accessible_only {
             if !has_flexible_memory {
                 return if has_device_local_only {
-                    Err(VkError::Compatibility("No host-accessible memory found".to_owned()))
+                    Err(EngineError::Compatibility("No host-accessible memory found".to_owned()))
                 } else {
-                    Err(VkError::Compatibility("No memory types were found".to_owned()))
+                    Err(EngineError::Compatibility("No memory types were found".to_owned()))
                 };
             }
             if has_device_local_only {
@@ -295,7 +295,7 @@ impl MemoryAllocator {
         // Scenarios where some memory is host-accessible but not device-local
         else {
             if !has_device_local_only && !has_flexible_memory {
-                return Err(VkError::Compatibility("No device-local memory found".to_owned()));
+                return Err(EngineError::Compatibility("No device-local memory found".to_owned()));
             }
             if !has_device_local_only {
                 // All memory host-accessible, some is also device-local (very unusual case?)
@@ -332,10 +332,10 @@ impl MemoryAllocator {
         }
 
         let Some(performance_type) = chosen_type_bulk_performance else {
-            return Err(VkError::Compatibility("Logic error selecting memory".to_owned()));
+            return Err(EngineError::Compatibility("Logic error selecting memory".to_owned()));
         };
         let Some(uniform_type) = chosen_type_uniform_buffer else {
-            return Err(VkError::Compatibility("Logic error selecting memory".to_owned()));
+            return Err(EngineError::Compatibility("Logic error selecting memory".to_owned()));
         };
         Ok(MemoryAllocationParameters {
             memory_type_bulk_performance: performance_type,
@@ -348,14 +348,14 @@ impl MemoryAllocator {
     unsafe fn create_staging_buffer_parameters(
         device: &Device,
         memory_type: u32
-    ) -> Result<StagingBuffer, VkError> {
+    ) -> Result<StagingBuffer, EngineError> {
 
         let buffer_create_info = vk::BufferCreateInfo::builder()
             .size(INITIAL_STAGING_BUFFER_SIZE)
             .usage(vk::BufferUsageFlags::TRANSFER_SRC)
             .build();
         let buffer = device.create_buffer(&buffer_create_info, None)
-            .map_err(|e| VkError::OpFailed(
+            .map_err(|e| EngineError::OpFailed(
                 format!("Failed to create staging buffer: {:?}", e)
             ))?;
 
@@ -366,11 +366,11 @@ impl MemoryAllocator {
             .build();
         let memory = device.allocate_memory(&allocate_info, None)
             .map_err(|e| {
-                VkError::OpFailed(format!("Error allocating staging buffer memory: {:?}", e))
+                EngineError::OpFailed(format!("Error allocating staging buffer memory: {:?}", e))
             })?;
 
         device.bind_buffer_memory(buffer, memory, 0)
-            .map_err(|e| VkError::OpFailed(
+            .map_err(|e| EngineError::OpFailed(
                 format!("Error binding staging buffer memory: {:?}", e)
             ))?;
 
@@ -383,16 +383,16 @@ impl MemoryAllocator {
         })
     }
 
-    pub unsafe fn map_memory<T>(&self, allocation: &MemoryAllocation) -> Result<*mut T, VkError> {
+    pub unsafe fn map_memory<T>(&self, allocation: &MemoryAllocation) -> Result<*mut T, EngineError> {
         let data_ptr = self.device
             .map_memory(allocation.memory, 0, allocation.size, vk::MemoryMapFlags::empty())
             .map_err(|e| {
-                VkError::OpFailed(format!("Error mapping memory: {:?}", e))
+                EngineError::OpFailed(format!("Error mapping memory: {:?}", e))
             })?;
         Ok(data_ptr as *mut T)
     }
 
-    pub unsafe fn unmap_memory(&self, allocation: &MemoryAllocation) -> Result<(), VkError> {
+    pub unsafe fn unmap_memory(&self, allocation: &MemoryAllocation) -> Result<(), EngineError> {
         self.device.unmap_memory(allocation.memory);
         Ok(())
     }

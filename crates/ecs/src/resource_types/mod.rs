@@ -1,16 +1,15 @@
 mod bearer;
-mod loader;
 
 pub use bearer::RawResourceBearer;
-pub use loader::ResourceLoader;
 use crate::EcsManager;
+use error::EngineError;
 
-pub trait Resource<L: ResourceLoader>: Sized + 'static {
+pub trait Resource<L>: Sized + 'static {
     type CreationData;
     fn create(
         loader: &L,
         ecs: &EcsManager<L>,
         data: &Self::CreationData
-    ) -> Result<Self, L::LoadError>;
+    ) -> Result<Self, EngineError>;
     fn release(&self, loader: &L);
 }

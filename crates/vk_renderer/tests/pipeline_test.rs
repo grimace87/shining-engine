@@ -7,7 +7,7 @@
 /// objects. Then it tears everything down.
 
 use vk_renderer::{
-    VkCore, VkContext, VkError, TextureCodec, ResourceUtilities, BufferUsage, ImageUsage,
+    VkCore, VkContext, TextureCodec, ResourceUtilities, BufferUsage, ImageUsage,
     VboCreationData, ShaderCreationData, ShaderStage, RenderpassCreationData,
     DescriptorSetLayoutCreationData, PipelineLayoutCreationData, PipelineCreationData,
     RenderpassTarget, UboUsage, BufferWrapper, ImageWrapper, RenderpassWrapper,
@@ -21,8 +21,9 @@ use ash::vk;
 use std::fmt::Debug;
 use vk_shader_macros::include_glsl;
 
-use model::{COLLADA, Config, StaticVertex};
 use ecs::{EcsManager, Handle, resource::{RawResourceBearer, Resource}};
+use error::EngineError;
+use model::{COLLADA, Config, StaticVertex};
 
 const VBO_INDEX_SCENE: u32 = 0;
 const SCENE_MODEL_BYTES: &[u8] =
@@ -60,7 +61,7 @@ impl RawResourceBearer<VkContext> for ResourceSource {
         &self,
         ecs: &mut EcsManager<VkContext>,
         loader: &VkContext
-    ) -> Result<(), VkError> {
+    ) -> Result<(), EngineError> {
 
         let scene_model = {
             let collada = COLLADA::new(&SCENE_MODEL_BYTES);
@@ -117,7 +118,7 @@ impl RawResourceBearer<VkContext> for ResourceSource {
         ecs: &mut EcsManager<VkContext>,
         loader: &mut VkContext,
         swapchain_image_count: usize
-    ) -> Result<(), VkError> {
+    ) -> Result<(), EngineError> {
 
         for i in 0..swapchain_image_count {
             let creation_data = RenderpassCreationData {

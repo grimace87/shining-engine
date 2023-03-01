@@ -1,6 +1,7 @@
 
-use crate::{VkContext, VkError, OffscreenFramebufferWrapper, TexturePixelFormat};
+use crate::{VkContext, OffscreenFramebufferWrapper, TexturePixelFormat};
 use ecs::{EcsManager, Handle, resource::Resource};
+use error::EngineError;
 use ash::vk;
 
 /// RenderpassTarget enum
@@ -38,7 +39,7 @@ impl Resource<VkContext> for RenderpassWrapper {
         loader: &VkContext,
         ecs: &EcsManager<VkContext>,
         data: &RenderpassCreationData
-    ) -> Result<Self, VkError> {
+    ) -> Result<Self, EngineError> {
         match data.target {
             RenderpassTarget::SwapchainImageWithDepth => {
                 let renderpass = RenderpassWrapper::new_with_swapchain_target(
@@ -76,7 +77,7 @@ impl RenderpassWrapper {
     pub fn new_with_swapchain_target(
         context: &VkContext,
         image_index: usize
-    ) -> Result<RenderpassWrapper, VkError> {
+    ) -> Result<RenderpassWrapper, EngineError> {
         let mut wrapper = RenderpassWrapper {
             renderpass: vk::RenderPass::null(),
             swapchain_framebuffer: vk::Framebuffer::null(),
@@ -94,7 +95,7 @@ impl RenderpassWrapper {
     pub fn new_with_offscreen_target(
         context: &VkContext,
         target: &OffscreenFramebufferWrapper
-    ) -> Result<RenderpassWrapper, VkError> {
+    ) -> Result<RenderpassWrapper, EngineError> {
         let mut wrapper = RenderpassWrapper {
             renderpass: vk::RenderPass::null(),
             swapchain_framebuffer: vk::Framebuffer::null(),
@@ -114,11 +115,11 @@ impl RenderpassWrapper {
         &mut self,
         context: &VkContext,
         image_index: usize
-    ) -> Result<(), VkError> {
+    ) -> Result<(), EngineError> {
 
         let depth_image = match context.get_depth_image() {
             Some(image) => image,
-            _ => return Err(VkError::OpFailed(
+            _ => return Err(EngineError::OpFailed(
                 String::from("Creating new renderpass wrapper with no depth image available")
             ))
         };
@@ -184,7 +185,7 @@ impl RenderpassWrapper {
         let renderpass = context.device
             .create_render_pass(&renderpass_info, None)
             .map_err(|e| {
-                VkError::OpFailed(format!("{:?}", e))
+                EngineError::OpFailed(format!("{:?}", e))
             })?;
 
         // Create framebuffers for the swapchain image views for use in this renderpass
@@ -206,7 +207,7 @@ impl RenderpassWrapper {
         context: &VkContext,
         target: &OffscreenFramebufferWrapper,
         discard_existing_image_content: bool
-    ) -> Result<(), VkError> {
+    ) -> Result<(), EngineError> {
 
         // TODO - Something useful with this flag
         if !discard_existing_image_content {
@@ -219,7 +220,7 @@ impl RenderpassWrapper {
         // Get the texture to use for color attachment
         let color_format = match target.color_format {
             TexturePixelFormat::Rgba => vk::Format::R8G8B8A8_UNORM,
-            _ => return Err(VkError::OpFailed(
+            _ => return Err(EngineError::OpFailed(
                 format!("Cannot set color attachment to {:?}", target.color_format)))
         };
 
@@ -251,7 +252,7 @@ impl RenderpassWrapper {
                             .samples(vk::SampleCountFlags::TYPE_1)
                             .build());
                     },
-                    _ => return Err(VkError::OpFailed(
+                    _ => return Err(EngineError::OpFailed(
                         format!("Cannot set depth attachment tp {:?}", target.depth_format))
                     )
                 };
@@ -309,7 +310,7 @@ impl RenderpassWrapper {
         let renderpass = context.device
             .create_render_pass(&renderpass_info, None)
             .map_err(|e| {
-                VkError::OpFailed(format!("{:?}", e))
+                EngineError::OpFailed(format!("{:?}", e))
             })?;
 
         // Create framebuffers for swapchain image views, or new framebuffers from scratch, for use in this renderpass
@@ -331,7 +332,7 @@ impl RenderpassWrapper {
         context: &VkContext,
         image_index: usize,
         renderpass: vk::RenderPass
-    ) -> Result<vk::Framebuffer, VkError> {
+    ) -> Result<vk::Framebuffer, EngineError> {
         let extent = context.get_extent()?;
         let image_view = context.get_swapchain_image_view(image_index)?;
         let depth_image = context.get_depth_image().unwrap();
@@ -348,7 +349,7 @@ impl RenderpassWrapper {
         let framebuffer = context.device
             .create_framebuffer(&framebuffer_info, None)
             .map_err(|e| {
-                VkError::OpFailed(format!("{:?}", e))
+                EngineError::OpFailed(format!("{:?}", e))
             })?;
         Ok(framebuffer)
     }
@@ -360,7 +361,7 @@ impl RenderpassWrapper {
         target: &OffscreenFramebufferWrapper,
         color_image: vk::ImageView,
         depth_image: Option<vk::ImageView>
-    ) -> Result<vk::Framebuffer, VkError> {
+    ) -> Result<vk::Framebuffer, EngineError> {
 
         let width = target.width as u32;
         let height = target.height as u32;
@@ -379,7 +380,7 @@ impl RenderpassWrapper {
         context.device
             .create_framebuffer(&framebuffer_info, None)
             .map_err(|e| {
-                VkError::OpFailed(format!("{:?}", e))
+                EngineError::OpFailed(format!("{:?}", e))
             })
     }
 }

@@ -2,8 +2,9 @@ pub mod buffer;
 pub mod image;
 pub mod util;
 
-use crate::{VkError, VkContext};
-use ecs::{EcsManager, Handle, resource::{Resource, ResourceLoader}};
+use crate::VkContext;
+use ecs::{EcsManager, Handle, resource::Resource};
+use error::EngineError;
 use ash::vk;
 
 /// ShaderStage enum
@@ -48,13 +49,13 @@ impl Resource<VkContext, > for vk::ShaderModule {
         loader: &VkContext,
         _ecs: &EcsManager<VkContext>,
         data: &ShaderCreationData
-    ) -> Result<Self, VkError> {
+    ) -> Result<Self, EngineError> {
         unsafe {
             let shader_create_info = vk::ShaderModuleCreateInfo::builder()
                 .code(data.data);
             loader.device
                 .create_shader_module(&shader_create_info, None)
-                .map_err(|e| VkError::OpFailed(format!("{:?}", e)))
+                .map_err(|e| EngineError::OpFailed(format!("{:?}", e)))
         }
     }
 
@@ -72,7 +73,7 @@ impl Resource<VkContext> for vk::DescriptorSetLayout {
         loader: &VkContext,
         _ecs: &EcsManager<VkContext>,
         data: &DescriptorSetLayoutCreationData
-    ) -> Result<Self, VkError> {
+    ) -> Result<Self, EngineError> {
         let ubo_stage_flags = match data.ubo_usage {
             UboUsage::VertexShaderRead =>
                 vk::ShaderStageFlags::VERTEX,
@@ -101,7 +102,7 @@ impl Resource<VkContext> for vk::DescriptorSetLayout {
             loader.device
                 .create_descriptor_set_layout(&descriptor_set_layout_info, None)
                 .map_err(|e|
-                    VkError::OpFailed(format!("Error creating descriptor set layout: {:?}", e))
+                    EngineError::OpFailed(format!("Error creating descriptor set layout: {:?}", e))
                 )?
         };
         Ok(descriptor_set_layout)
@@ -121,7 +122,7 @@ impl Resource<VkContext> for vk::PipelineLayout {
         loader: &VkContext,
         ecs: &EcsManager<VkContext>,
         data: &PipelineLayoutCreationData
-    ) -> Result<Self, VkError> {
+    ) -> Result<Self, EngineError> {
         let descriptor_set_layout  = ecs
             .get_item::<vk::DescriptorSetLayout>(
                 Handle::for_resource(data.descriptor_set_layout_index))
@@ -132,7 +133,7 @@ impl Resource<VkContext> for vk::PipelineLayout {
         let pipeline_layout = unsafe {
             loader.device
                 .create_pipeline_layout(&pipeline_layout_info, None)
-                .map_err(|e| VkError::OpFailed(format!("{:?}", e)))?
+                .map_err(|e| EngineError::OpFailed(format!("{:?}", e)))?
         };
         Ok(pipeline_layout)
     }
@@ -141,19 +142,5 @@ impl Resource<VkContext> for vk::PipelineLayout {
         unsafe {
             loader.device.destroy_pipeline_layout(*self, None);
         }
-    }
-}
-
-impl ResourceLoader for VkContext {
-    type LoadError = VkError;
-
-    fn get_current_swapchain_extent(&self) -> Result<(u32, u32), VkError> {
-        let extent = self.get_extent()?;
-        Ok((extent.width, extent.height))
-    }
-
-    #[inline]
-    fn make_error(message: String) -> VkError {
-        VkError::MissingResource(message)
     }
 }

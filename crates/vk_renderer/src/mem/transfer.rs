@@ -2,8 +2,8 @@
 use crate::mem::{
     MemoryAllocator, ManagesMemoryTransfers, MemoryAllocation
 };
-use crate::{VkError, Queue};
-
+use crate::Queue;
+use error::EngineError;
 use ash::vk;
 
 impl ManagesMemoryTransfers for MemoryAllocator {
@@ -15,7 +15,7 @@ impl ManagesMemoryTransfers for MemoryAllocator {
         allocation: &MemoryAllocation,
         init_data: *const u8,
         data_size_bytes: usize
-    ) -> Result<(), VkError> {
+    ) -> Result<(), EngineError> {
 
         if self.staging_buffer.is_some() {
             self.transfer_data_to_new_buffer_with_staging_buffer(
@@ -31,7 +31,7 @@ impl ManagesMemoryTransfers for MemoryAllocator {
         allocation: &MemoryAllocation,
         init_data: *const u8,
         data_size_bytes: usize
-    ) -> Result<(), VkError> {
+    ) -> Result<(), EngineError> {
 
         // Copy data into buffer memory
         let dst_ptr = self.map_memory::<u8>(allocation)?;
@@ -47,10 +47,10 @@ impl ManagesMemoryTransfers for MemoryAllocator {
         buffer: &vk::Buffer,
         init_data: *const u8,
         data_size_bytes: usize
-    ) -> Result<(), VkError> {
+    ) -> Result<(), EngineError> {
 
         let Some(staging_parameters) = &self.staging_buffer else {
-            return Err(VkError::OpFailed(
+            return Err(EngineError::OpFailed(
                 "Internal error: transferring from staging without a buffer".to_owned()
             ));
         };
@@ -65,7 +65,7 @@ impl ManagesMemoryTransfers for MemoryAllocator {
             .flags(vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT);
         self.device.begin_command_buffer(self.transfer_command_buffer, &command_begin_info)
             .map_err(|e| {
-                VkError::OpFailed(format!("Error starting copy command buffer: {:?}", e))
+                EngineError::OpFailed(format!("Error starting copy command buffer: {:?}", e))
             })?;
 
         // Initial memory dependency
@@ -124,12 +124,12 @@ impl ManagesMemoryTransfers for MemoryAllocator {
         // Finish recording commands, create a fence, run the command, wait for fence, clean up
         self.device.end_command_buffer(self.transfer_command_buffer)
             .map_err(|e| {
-                VkError::OpFailed(format!("Error ending command buffer: {:?}", e))
+                EngineError::OpFailed(format!("Error ending command buffer: {:?}", e))
             })?;
         let fence = self.device
             .create_fence(&vk::FenceCreateInfo::default(), None)
             .map_err(|e| {
-                VkError::OpFailed(format!("Error creating fence: {:?}", e))
+                EngineError::OpFailed(format!("Error creating fence: {:?}", e))
             })?;
         transfer_queue.submit_transfer_command_buffer(
             &self.device,
@@ -138,7 +138,7 @@ impl ManagesMemoryTransfers for MemoryAllocator {
         self.device
             .wait_for_fences(&[fence], true, u64::MAX)
             .map_err(|e| {
-                VkError::OpFailed(format!("Error waiting for fence: {:?}", e))
+                EngineError::OpFailed(format!("Error waiting for fence: {:?}", e))
             })?;
         self.device
             .destroy_fence(fence, None);
@@ -153,14 +153,14 @@ impl ManagesMemoryTransfers for MemoryAllocator {
         aspect: vk::ImageAspectFlags,
         old_layout: vk::ImageLayout,
         new_layout: vk::ImageLayout
-    ) -> Result<(), VkError> {
+    ) -> Result<(), EngineError> {
 
         // Allocate a single-use command buffer and begin recording
         let command_begin_info = vk::CommandBufferBeginInfo::builder()
             .flags(vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT);
         self.device.begin_command_buffer(self.transfer_command_buffer, &command_begin_info)
             .map_err(|e| {
-                VkError::OpFailed(format!("Error starting copy command buffer: {:?}", e))
+                EngineError::OpFailed(format!("Error starting copy command buffer: {:?}", e))
             })?;
 
         // Memory dependency - move to final image layout
@@ -193,12 +193,12 @@ impl ManagesMemoryTransfers for MemoryAllocator {
         // Finish recording commands, create a fence, run the command, wait for fence, clean up
         self.device.end_command_buffer(self.transfer_command_buffer)
             .map_err(|e| {
-                VkError::OpFailed(format!("Error ending command buffer: {:?}", e))
+                EngineError::OpFailed(format!("Error ending command buffer: {:?}", e))
             })?;
         let fence = self.device
             .create_fence(&vk::FenceCreateInfo::default(), None)
             .map_err(|e| {
-                VkError::OpFailed(format!("Error creating fence: {:?}", e))
+                EngineError::OpFailed(format!("Error creating fence: {:?}", e))
             })?;
         transfer_queue.submit_transfer_command_buffer(
             &self.device,
@@ -207,7 +207,7 @@ impl ManagesMemoryTransfers for MemoryAllocator {
         self.device
             .wait_for_fences(&[fence], true, u64::MAX)
             .map_err(|e| {
-                VkError::OpFailed(format!("Error waiting for fence: {:?}", e))
+                EngineError::OpFailed(format!("Error waiting for fence: {:?}", e))
             })?;
         self.device
             .destroy_fence(fence, None);
@@ -225,7 +225,7 @@ impl ManagesMemoryTransfers for MemoryAllocator {
         expected_layout: vk::ImageLayout,
         allocation: &MemoryAllocation,
         layer_data: &[Vec<u8>]
-    ) -> Result<(), VkError> {
+    ) -> Result<(), EngineError> {
 
         let layer_count = layer_data.len();
         let layer_size_bytes = layer_data[0].len();
@@ -253,7 +253,7 @@ impl ManagesMemoryTransfers for MemoryAllocator {
         expected_layout: vk::ImageLayout,
         allocation: &MemoryAllocation,
         layer_data: &[Vec<u8>]
-    ) -> Result<(), VkError> {
+    ) -> Result<(), EngineError> {
 
         // Copy data into image memory
         let layer_count = layer_data.len();
@@ -272,7 +272,7 @@ impl ManagesMemoryTransfers for MemoryAllocator {
             .flags(vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT);
         self.device.begin_command_buffer(self.transfer_command_buffer, &command_begin_info)
             .map_err(|e| {
-                VkError::OpFailed(format!("Error starting copy command buffer: {:?}", e))
+                EngineError::OpFailed(format!("Error starting copy command buffer: {:?}", e))
             })?;
 
         // Memory dependency - move to final image layout
@@ -305,12 +305,12 @@ impl ManagesMemoryTransfers for MemoryAllocator {
         // Finish recording commands, create a fence, run the command, wait for fence, clean up
         self.device.end_command_buffer(self.transfer_command_buffer)
             .map_err(|e| {
-                VkError::OpFailed(format!("Error ending command buffer: {:?}", e))
+                EngineError::OpFailed(format!("Error ending command buffer: {:?}", e))
             })?;
         let fence = self.device
             .create_fence(&vk::FenceCreateInfo::default(), None)
             .map_err(|e| {
-                VkError::OpFailed(format!("Error creating fence: {:?}", e))
+                EngineError::OpFailed(format!("Error creating fence: {:?}", e))
             })?;
         transfer_queue.submit_transfer_command_buffer(
             &self.device,
@@ -319,7 +319,7 @@ impl ManagesMemoryTransfers for MemoryAllocator {
         self.device
             .wait_for_fences(&[fence], true, u64::MAX)
             .map_err(|e| {
-                VkError::OpFailed(format!("Error waiting for fence: {:?}", e))
+                EngineError::OpFailed(format!("Error waiting for fence: {:?}", e))
             })?;
         self.device
             .destroy_fence(fence, None);
@@ -336,10 +336,10 @@ impl ManagesMemoryTransfers for MemoryAllocator {
         aspect: vk::ImageAspectFlags,
         expected_layout: vk::ImageLayout,
         layer_data: &[Vec<u8>]
-    ) -> Result<(), VkError> {
+    ) -> Result<(), EngineError> {
 
         let Some(staging_parameters) = &self.staging_buffer else {
-            return Err(VkError::OpFailed(
+            return Err(EngineError::OpFailed(
                 "Internal error: transferring from staging without a buffer".to_owned()
             ));
         };
@@ -361,7 +361,7 @@ impl ManagesMemoryTransfers for MemoryAllocator {
             .flags(vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT);
         self.device.begin_command_buffer(self.transfer_command_buffer, &command_begin_info)
             .map_err(|e| {
-                VkError::OpFailed(format!("Error starting copy command buffer: {:?}", e))
+                EngineError::OpFailed(format!("Error starting copy command buffer: {:?}", e))
             })?;
 
         // Initial memory dependency
@@ -444,12 +444,12 @@ impl ManagesMemoryTransfers for MemoryAllocator {
         // Finish recording commands, create a fence, run the command, wait for fence, clean up
         self.device.end_command_buffer(self.transfer_command_buffer)
             .map_err(|e| {
-                VkError::OpFailed(format!("Error ending command buffer: {:?}", e))
+                EngineError::OpFailed(format!("Error ending command buffer: {:?}", e))
             })?;
         let fence = self.device
             .create_fence(&vk::FenceCreateInfo::default(), None)
             .map_err(|e| {
-                VkError::OpFailed(format!("Error creating fence: {:?}", e))
+                EngineError::OpFailed(format!("Error creating fence: {:?}", e))
             })?;
         transfer_queue.submit_transfer_command_buffer(
             &self.device,
@@ -458,7 +458,7 @@ impl ManagesMemoryTransfers for MemoryAllocator {
         self.device
             .wait_for_fences(&[fence], true, u64::MAX)
             .map_err(|e| {
-                VkError::OpFailed(format!("Error waiting for fence: {:?}", e))
+                EngineError::OpFailed(format!("Error waiting for fence: {:?}", e))
             })?;
         self.device
             .destroy_fence(fence, None);

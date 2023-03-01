@@ -1,8 +1,9 @@
 
 use crate::{StockTimer, Timer, Scene};
-use vk_renderer::{VkError, VkCore, VkContext, PresentResult};
+use vk_renderer::{VkCore, VkContext, PresentResult};
 use window::{Window, PhysicalSize};
 use ecs::{EcsManager, resource::RawResourceBearer};
+use error::EngineError;
 use std::cell::RefCell;
 
 pub struct EngineInternals {
@@ -18,7 +19,7 @@ impl EngineInternals {
     pub fn new(
         window: &Window,
         resource_bearer: &Box<dyn RawResourceBearer<VkContext>>
-    ) -> Result<Self, VkError> {
+    ) -> Result<Self, EngineError> {
         // Creation of required components
         let core = unsafe { VkCore::new(&window, vec![]).unwrap() };
         let mut context = VkContext::new(&core, &window).unwrap();
@@ -65,7 +66,7 @@ impl EngineInternals {
     pub fn record_graphics_commands(
         &self,
         scene: &Box<dyn Scene<VkContext>>
-    ) -> Result<(), VkError> {
+    ) -> Result<(), EngineError> {
         let context = self.render_context.borrow();
         let ecs = self.ecs.borrow();
         for image_index in 0..context.get_swapchain_image_count() {
@@ -95,7 +96,7 @@ impl EngineInternals {
         window: &Window,
         new_client_area_size: PhysicalSize<u32>,
         scene: &Box<dyn Scene<VkContext>>
-    ) -> Result<(), VkError> {
+    ) -> Result<(), EngineError> {
         // Wait for the device to be idle
         unsafe {
             self.render_context.borrow().wait_until_device_idle()?;
@@ -122,7 +123,7 @@ impl EngineInternals {
         Ok(())
     }
 
-    pub fn render_frame(&mut self, scene: &Box<dyn Scene<VkContext>>) -> Result<PresentResult, VkError> {
+    pub fn render_frame(&mut self, scene: &Box<dyn Scene<VkContext>>) -> Result<PresentResult, EngineError> {
         let mut context = self.render_context.borrow_mut();
         let ecs = self.ecs.borrow();
         unsafe {

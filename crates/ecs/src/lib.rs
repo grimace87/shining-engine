@@ -9,7 +9,7 @@ pub use table::{HandleTable, DynamicTable};
 
 pub mod resource {
     use crate::resource_types;
-    pub use resource_types::{Resource, RawResourceBearer, ResourceLoader};
+    pub use resource_types::{Resource, RawResourceBearer};
 }
 
 #[cfg(test)]

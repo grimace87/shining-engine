@@ -1,7 +1,7 @@
 
 use crate::mem::{MemoryAllocator, ManagesImageMemory, MemoryAllocation, ManagesMemoryTransfers};
-use crate::{VkError, Queue};
-
+use crate::Queue;
+use error::EngineError;
 use ash::vk;
 
 impl ManagesImageMemory for MemoryAllocator {
@@ -27,7 +27,7 @@ impl ManagesImageMemory for MemoryAllocator {
         init_layer_data: Option<&[Vec<u8>]>,
         initialising_layout: vk::ImageLayout,
         expected_layout: vk::ImageLayout
-    ) -> Result<MemoryAllocation, VkError> {
+    ) -> Result<MemoryAllocation, EngineError> {
 
         // Allocate the final memory to be used for backing the image
         let requirements = self.device.get_image_memory_requirements(*image);
@@ -36,7 +36,7 @@ impl ManagesImageMemory for MemoryAllocator {
             .memory_type_index(self.allocation_parameters.memory_type_bulk_performance);
         let memory = self.device.allocate_memory(&allocate_info, None)
             .map_err(|e| {
-                VkError::OpFailed(format!("Error allocating image memory: {:?}", e))
+                EngineError::OpFailed(format!("Error allocating image memory: {:?}", e))
             })?;
         let allocation = MemoryAllocation {
             memory,
@@ -46,7 +46,7 @@ impl ManagesImageMemory for MemoryAllocator {
         // Bind the image's memory
         self.device.bind_image_memory(*image, memory, 0)
             .map_err(|e| {
-                VkError::OpFailed(format! ("Error binding memory to image: {:?}", e))
+                EngineError::OpFailed(format! ("Error binding memory to image: {:?}", e))
             })?;
 
         // If memory needs to be initialised with data, do it via a separate function that handles
@@ -78,7 +78,7 @@ impl ManagesImageMemory for MemoryAllocator {
         &self,
         image: vk::Image,
         allocation: &MemoryAllocation
-    ) -> Result<(), VkError> {
+    ) -> Result<(), EngineError> {
         self.device.destroy_image(image, None);
         self.device.free_memory(allocation.memory, None);
         Ok(())

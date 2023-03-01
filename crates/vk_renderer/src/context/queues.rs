@@ -1,5 +1,5 @@
 
-use crate::VkError;
+use error::EngineError;
 use ash::{
     Device,
     vk
@@ -14,7 +14,7 @@ pub struct Queue {
 
 impl Queue {
 
-    pub unsafe fn new(device: &Device, queue_family_index: u32) -> Result<Self, VkError> {
+    pub unsafe fn new(device: &Device, queue_family_index: u32) -> Result<Self, EngineError> {
 
         // Get queue
         let queue = device.get_device_queue(queue_family_index, 0);
@@ -26,7 +26,7 @@ impl Queue {
         let command_buffer_pool = device
             .create_command_pool(&pool_info, None)
             .map_err(|e| {
-                VkError::OpFailed(format!("{:?}", e))
+                EngineError::OpFailed(format!("{:?}", e))
             })?;
 
         Ok(Self {
@@ -40,26 +40,26 @@ impl Queue {
         self.queue
     }
 
-    pub unsafe fn allocate_command_buffer(&self, device: &Device) -> Result<vk::CommandBuffer, VkError> {
+    pub unsafe fn allocate_command_buffer(&self, device: &Device) -> Result<vk::CommandBuffer, EngineError> {
         let command_buffer_alloc_info = vk::CommandBufferAllocateInfo::builder()
             .command_pool(self.command_buffer_pool)
             .command_buffer_count(1);
         let command_buffer = device
             .allocate_command_buffers(&command_buffer_alloc_info)
             .map_err(|e| {
-                VkError::OpFailed(format!("Error allocating command buffer: {:?}", e))
+                EngineError::OpFailed(format!("Error allocating command buffer: {:?}", e))
             })?[0];
         Ok(command_buffer)
     }
 
-    pub unsafe fn free_command_buffers(&self, device: &Device) -> Result<(), VkError> {
+    pub unsafe fn free_command_buffers(&self, device: &Device) -> Result<(), EngineError> {
         device
             .reset_command_pool(
                 self.command_buffer_pool,
                 vk::CommandPoolResetFlags::RELEASE_RESOURCES
             )
             .map_err(|e| {
-                VkError::OpFailed(format!("Error resetting command pool: {:?}", e))
+                EngineError::OpFailed(format!("Error resetting command pool: {:?}", e))
             })
     }
 
@@ -67,14 +67,14 @@ impl Queue {
         &self,
         device: &Device,
         buffer_count: usize
-    ) -> Result<Vec<vk::CommandBuffer>, VkError> {
+    ) -> Result<Vec<vk::CommandBuffer>, EngineError> {
         device
             .reset_command_pool(
                 self.command_buffer_pool,
                 vk::CommandPoolResetFlags::RELEASE_RESOURCES
             )
             .map_err(|e| {
-                VkError::OpFailed(format!("Error resetting command pool: {:?}", e))
+                EngineError::OpFailed(format!("Error resetting command pool: {:?}", e))
             })?;
         let command_buffer_allocate_info = vk::CommandBufferAllocateInfo::builder()
             .command_pool(self.command_buffer_pool)
@@ -82,7 +82,7 @@ impl Queue {
         device
             .allocate_command_buffers(&command_buffer_allocate_info)
             .map_err(|e| {
-                VkError::OpFailed(format!("Error re-allocating command buffers: {:?}", e))
+                EngineError::OpFailed(format!("Error re-allocating command buffers: {:?}", e))
             })
     }
 
@@ -91,7 +91,7 @@ impl Queue {
         device: &Device,
         command_buffer: &vk::CommandBuffer,
         fence: &vk::Fence
-    ) -> Result<(), VkError> {
+    ) -> Result<(), EngineError> {
         let submit_infos = [
             vk::SubmitInfo::builder()
                 .command_buffers(&[command_buffer.clone()])
@@ -100,7 +100,7 @@ impl Queue {
         device
             .queue_submit(self.queue, &submit_infos, fence.clone())
             .map_err(|e| {
-                VkError::OpFailed(format!("Error submitting to queue: {:?}", e))
+                EngineError::OpFailed(format!("Error submitting to queue: {:?}", e))
             })?;
         Ok(())
     }
@@ -112,7 +112,7 @@ impl Queue {
         sync_image_available: vk::Semaphore,
         sync_may_begin_rendering: vk::Fence,
         sync_rendering_finished: vk::Semaphore
-    ) -> Result<(), VkError> {
+    ) -> Result<(), EngineError> {
         let semaphores_available = [sync_image_available];
         let waiting_stages = [vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT];
         let semaphores_finished = [sync_rendering_finished];
@@ -129,7 +129,7 @@ impl Queue {
             sync_may_begin_rendering
         )
             .map_err(|e| {
-                VkError::OpFailed(format!("Queue submit error: {:?}", e))
+                EngineError::OpFailed(format!("Queue submit error: {:?}", e))
             })?;
         Ok(())
     }

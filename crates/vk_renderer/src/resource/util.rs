@@ -1,5 +1,6 @@
 
-use crate::{VkError, ImageUsage, TexturePixelFormat, TextureCreationData};
+use crate::{ImageUsage, TexturePixelFormat, TextureCreationData};
+use error::EngineError;
 use model::{Model, StaticVertex, StoresAsFile};
 use std::io::Cursor;
 use image::{
@@ -31,13 +32,13 @@ impl ResourceUtilities {
         image_file_bytes: &[u8],
         codec: TextureCodec,
         usage: ImageUsage
-    ) -> Result<TextureCreationData, VkError> {
+    ) -> Result<TextureCreationData, EngineError> {
         let (data, width, height) = match codec {
             TextureCodec::Jpeg => {
                 let src_cursor = Cursor::new(image_file_bytes.to_vec());
                 let decoder = JpegDecoder::new(src_cursor).unwrap();
                 let image_pixel_data = DynamicImage::from_decoder(decoder)
-                    .map_err(|e| VkError::OpFailed(format!("Failed decoding image: {:?}", e)))?;
+                    .map_err(|e| EngineError::OpFailed(format!("Failed decoding image: {:?}", e)))?;
                 let image_data_rgba = image_pixel_data.to_rgba8();
                 (image_data_rgba.to_vec(), image_data_rgba.width(), image_data_rgba.height())
             },
@@ -45,7 +46,7 @@ impl ResourceUtilities {
                 let src_cursor = Cursor::new(image_file_bytes.to_vec());
                 let decoder = PngDecoder::new(src_cursor).unwrap();
                 let image_pixel_data = DynamicImage::from_decoder(decoder)
-                    .map_err(|e| VkError::OpFailed(format!("Failed decoding image: {:?}", e)))?;
+                    .map_err(|e| EngineError::OpFailed(format!("Failed decoding image: {:?}", e)))?;
                 let image_data_rgba = image_pixel_data.to_rgba8();
                 (image_data_rgba.to_vec(), image_data_rgba.width(), image_data_rgba.height())
             }

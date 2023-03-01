@@ -3,12 +3,8 @@ mod present;
 mod queues;
 mod swapchain;
 
-use crate::{
-    VkError,
-    VkCore,
-    ImageWrapper,
-    mem::{MemoryAllocator, MemoryAllocatorCreateInfo}
-};
+use crate::{VkCore, ImageWrapper, mem::{MemoryAllocator, MemoryAllocatorCreateInfo}};
+use error::EngineError;
 use ash::{
     Device,
     extensions::khr::{
@@ -43,7 +39,7 @@ pub struct VkContext {
 
 impl VkContext {
 
-    pub fn new<T>(core: &VkCore, window: &T) -> Result<Self, VkError>
+    pub fn new<T>(core: &VkCore, window: &T) -> Result<Self, EngineError>
         where T: HasRawDisplayHandle + HasRawWindowHandle
     {
         Ok(unsafe {
@@ -54,7 +50,7 @@ impl VkContext {
         })
     }
 
-    pub fn release_command_buffers(&mut self) -> Result<(), VkError> {
+    pub fn release_command_buffers(&mut self) -> Result<(), EngineError> {
         unsafe {
             self.graphics_queue.free_command_buffers(&self.device)
         }
@@ -75,7 +71,7 @@ impl VkContext {
     unsafe fn new_with_surface_without_swapchain<T>(
         core: &VkCore,
         window: &T
-    ) -> Result<VkContext, VkError>
+    ) -> Result<VkContext, EngineError>
         where T: HasRawDisplayHandle + HasRawWindowHandle
     {
 
@@ -87,7 +83,7 @@ impl VkContext {
             window.raw_display_handle(),
             window.raw_window_handle(),
             None)
-            .map_err(|e| VkError::OpFailed(format!("Error creating surface: {}", e)))?;
+            .map_err(|e| EngineError::OpFailed(format!("Error creating surface: {}", e)))?;
 
         // Create device
         let device = device::make_device_resources(core)?;
@@ -132,14 +128,14 @@ impl VkContext {
     }
 
     /// Get the dimensions of the current surface
-    pub fn get_extent(&self) -> Result<vk::Extent2D, VkError> {
+    pub fn get_extent(&self) -> Result<vk::Extent2D, EngineError> {
         let surface_capabilities = unsafe {
             self.surface_fn.get_physical_device_surface_capabilities(
                 self.borrowed_physical_device_handle,
                 self.surface
             )
                 .map_err(|e| {
-                    VkError::OpFailed(format!("{:?}", e))
+                    EngineError::OpFailed(format!("{:?}", e))
                 })?
         };
         Ok(surface_capabilities.current_extent)
@@ -151,7 +147,7 @@ impl VkContext {
     }
 
     /// Getter for a swapchain image view
-    pub fn get_swapchain_image_view(&self, image_index: usize) -> Result<vk::ImageView, VkError> {
+    pub fn get_swapchain_image_view(&self, image_index: usize) -> Result<vk::ImageView, EngineError> {
         self.swapchain.get_image_view(image_index)
     }
 
@@ -166,7 +162,7 @@ impl VkContext {
     }
 
     /// Create the swapchain; any previously-created swapchain should be destroyed first
-    unsafe fn create_swapchain(&mut self, core: &VkCore) -> Result<(), VkError> {
+    unsafe fn create_swapchain(&mut self, core: &VkCore) -> Result<(), EngineError> {
 
         let extent = self.get_extent()?;
         self.swapchain = SwapchainWrapper::new(core, &self, &self.surface_fn, self.surface, extent)?;
@@ -184,17 +180,17 @@ impl VkContext {
             let semaphore_available = self.device
                 .create_semaphore(&semaphore_create_info, None)
                 .map_err(|e| {
-                    VkError::OpFailed(format!("{:?}", e))
+                    EngineError::OpFailed(format!("{:?}", e))
                 })?;
             let fence_begin_rendering = self.device
                 .create_fence(&fence_create_info, None)
                 .map_err(|e| {
-                    VkError::OpFailed(format!("{:?}", e))
+                    EngineError::OpFailed(format!("{:?}", e))
                 })?;
             let semaphore_finished = self.device
                 .create_semaphore(&semaphore_create_info, None)
                 .map_err(|e| {
-                    VkError::OpFailed(format!("{:?}", e))
+                    EngineError::OpFailed(format!("{:?}", e))
                 })?;
             self.sync_image_available.push(semaphore_available);
             self.sync_may_begin_rendering.push(fence_begin_rendering);
@@ -223,10 +219,10 @@ impl VkContext {
         (&self.mem_allocator, &self.transfer_queue)
     }
 
-    pub unsafe fn wait_until_device_idle(&self) -> Result<(), VkError> {
+    pub unsafe fn wait_until_device_idle(&self) -> Result<(), EngineError> {
         self.device.device_wait_idle()
             .map_err(|e| {
-                VkError::OpFailed(format!("Failed waiting for device: {:?}", e))
+                EngineError::OpFailed(format!("Failed waiting for device: {:?}", e))
             })?;
         Ok(())
     }
@@ -236,7 +232,7 @@ impl VkContext {
     /// of the old ones individually.
     pub unsafe fn regenerate_graphics_command_buffers(
         &mut self
-    ) -> Result<(), VkError> {
+    ) -> Result<(), EngineError> {
         self.graphics_command_buffers.clear();
         let graphics_command_buffers = self.graphics_queue.regenerate_command_buffers(
             &self.device,
@@ -253,7 +249,7 @@ impl VkContext {
         &mut self,
         core: &VkCore,
         window: &T
-    ) -> Result<(), VkError>
+    ) -> Result<(), EngineError>
         where T: HasRawDisplayHandle + HasRawWindowHandle
     {
         self.destroy_swapchain_resources();
@@ -264,7 +260,7 @@ impl VkContext {
             window.raw_display_handle(),
             window.raw_window_handle(),
             None)
-            .map_err(|e| VkError::OpFailed(format!("Error creating surface: {}", e)))?;
+            .map_err(|e| EngineError::OpFailed(format!("Error creating surface: {}", e)))?;
         self.create_swapchain(core)?;
         Ok(())
     }
@@ -274,7 +270,7 @@ impl VkContext {
     //
     // Acquires an image while signalling a semaphore, then waits on a fence to know that the
     // image is available to draw on.
-    pub unsafe fn acquire_next_image(&mut self) -> Result<(usize, bool), VkError> {
+    pub unsafe fn acquire_next_image(&mut self) -> Result<(usize, bool), EngineError> {
         let swapchain_size = self.get_swapchain_image_count();
         let sync_objects_index = (self.current_image_acquired + 1) % swapchain_size;
         let result = self.swapchain_fn.acquire_next_image(
@@ -284,7 +280,7 @@ impl VkContext {
             vk::Fence::null());
         let (image_index, _) = match result {
             Err(vk::Result::ERROR_OUT_OF_DATE_KHR) => return Ok((0, false)),
-            Err(e) => return Err(VkError::OpFailed(
+            Err(e) => return Err(EngineError::OpFailed(
                 format!("Image acquire failure: {:?}", e))),
             Ok(t) => t
         };
@@ -296,17 +292,17 @@ impl VkContext {
             true,
             u64::MAX)
             .map_err(|e| {
-                VkError::OpFailed(format!("Waiting on fence error: {:?}", e))
+                EngineError::OpFailed(format!("Waiting on fence error: {:?}", e))
             })?;
         self.device.reset_fences(&[self.sync_may_begin_rendering[self.current_image_acquired]])
             .map_err(|e| {
-                VkError::OpFailed(format!("Resetting fence error: {:?}", e))
+                EngineError::OpFailed(format!("Resetting fence error: {:?}", e))
             })?;
 
         Ok((self.current_image_acquired, true))
     }
 
-    pub unsafe fn submit_and_present(&self) -> Result<PresentResult, VkError> {
+    pub unsafe fn submit_and_present(&self) -> Result<PresentResult, EngineError> {
 
         // Submit graphics work
         let command_buffer = self.graphics_command_buffers[self.current_image_acquired];
@@ -335,7 +331,7 @@ impl VkContext {
             Err(vk::Result::ERROR_OUT_OF_DATE_KHR) => {
                 Ok(PresentResult::SwapchainOutOfDate)
             },
-            Err(e) => Err(VkError::OpFailed(format!("Present error: {:?}", e)))
+            Err(e) => Err(EngineError::OpFailed(format!("Present error: {:?}", e)))
         };
     }
 }

@@ -1,14 +1,12 @@
 
-use crate::{
-    Handle, DynamicTable, HandleTable,
-    resource::{Resource, ResourceLoader}
-};
+use crate::{Handle, DynamicTable, HandleTable, resource::Resource};
+use error::EngineError;
 
-pub struct EcsManager<L: ResourceLoader> {
+pub struct EcsManager<L> {
     tables: Vec<Box<dyn DynamicTable<L>>>
 }
 
-impl<L: ResourceLoader> EcsManager<L> {
+impl<L> EcsManager<L> {
 
     pub fn new() -> Self {
         Self {
@@ -78,7 +76,7 @@ impl<L: ResourceLoader> EcsManager<L> {
         None
     }
 
-    pub fn free_all_resources(&mut self, loader: &L) -> Result<(), L::LoadError> {
+    pub fn free_all_resources(&mut self, loader: &L) -> Result<(), EngineError> {
 
         for table in self.tables.iter_mut() {
             table.free_all_resources(loader);

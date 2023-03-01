@@ -9,8 +9,9 @@ ash-window = { workspace = true }
 raw-window-handle = { workspace = true }
 vk-shader-macros = { workspace = true }
 image = { version = "0.24.4", default-features = false, features = ["jpeg", "png"] }
-model = { path = "../model" }
+error = { path = "../error" }
 ecs = { path = "../ecs" }
+model = { path = "../model" }
 
 [dev-dependencies]
 vk_renderer = { path = "." }

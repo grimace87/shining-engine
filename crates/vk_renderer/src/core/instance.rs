@@ -1,5 +1,5 @@
 
-use crate::VkError;
+use error::EngineError;
 use ash::{
     vk,
     Entry,
@@ -21,7 +21,7 @@ const DEBUG_LAYER_NAME: &'static str = "VK_LAYER_KHRONOS_validation";
 pub unsafe fn make_instance(
     entry: &Entry,
     display_handle: RawDisplayHandle
-) -> Result<Instance, VkError> {
+) -> Result<Instance, EngineError> {
 
     // App info
     let engine_name = CString::new("Shining Engine").unwrap();
@@ -53,18 +53,18 @@ pub unsafe fn make_instance(
     entry
         .create_instance(&instance_create_info, None)
         .map_err(|e| {
-            VkError::OpFailed(format!("Instance creation failed: {:?}", e))
+            EngineError::OpFailed(format!("Instance creation failed: {:?}", e))
         })
 }
 
 /// Get the required extensions for windowing - this will be handled by ash_window
 fn get_window_instance_extensions(
     display_handle: RawDisplayHandle
-) -> Result<Vec<*const c_char>, VkError> {
+) -> Result<Vec<*const c_char>, EngineError> {
     let extensions_as_c_str =
         ash_window::enumerate_required_extensions(display_handle)
             .map_err(|e| {
-                VkError::OpFailed(format!("{:?}", e))
+                EngineError::OpFailed(format!("{:?}", e))
             })?
             .iter()
             .map(|ext| *ext)
@@ -73,12 +73,12 @@ fn get_window_instance_extensions(
 }
 
 /// Gets the extensions required for debugging
-unsafe fn get_debug_instance_extensions(entry: &Entry) -> Result<Vec<*const c_char>, VkError> {
+unsafe fn get_debug_instance_extensions(entry: &Entry) -> Result<Vec<*const c_char>, EngineError> {
     if cfg!(debug_assertions) {
         let debug_extension = DebugUtils::name();
         let supported_extensions = entry.enumerate_instance_extension_properties(None)
             .map_err(|e| {
-                VkError::OpFailed(format!("Failed to enumerate instance extensions: {:?}", e))
+                EngineError::OpFailed(format!("Failed to enumerate instance extensions: {:?}", e))
             })?;
         let is_supported = supported_extensions
             .iter()
@@ -94,12 +94,12 @@ unsafe fn get_debug_instance_extensions(entry: &Entry) -> Result<Vec<*const c_ch
 }
 
 /// Gets the instance layers for debugging
-unsafe fn get_debug_instance_layers(entry: &Entry) -> Result<Vec<CString>, VkError> {
+unsafe fn get_debug_instance_layers(entry: &Entry) -> Result<Vec<CString>, EngineError> {
     if cfg!(debug_assertions) {
         let validation_layer = CString::new(DEBUG_LAYER_NAME).unwrap();
         let supported_extensions = entry.enumerate_instance_layer_properties()
             .map_err(|e| {
-                VkError::OpFailed(format!("Failed to enumerate instance layers: {:?}", e))
+                EngineError::OpFailed(format!("Failed to enumerate instance layers: {:?}", e))
             })?;
         let is_supported = supported_extensions
             .iter()

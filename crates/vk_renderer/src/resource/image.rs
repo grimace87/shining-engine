@@ -1,10 +1,7 @@
 
-use crate::{
-    VkError,
-    context::VkContext,
-    mem::{MemoryAllocation, ManagesImageMemory}
-};
+use crate::{context::VkContext, mem::{MemoryAllocation, ManagesImageMemory}};
 use ecs::{EcsManager, resource::Resource};
+use error::EngineError;
 use ash::vk;
 
 /// TexturePixelFormat enum
@@ -66,7 +63,7 @@ impl Resource<VkContext> for ImageWrapper {
         loader: &VkContext,
         _ecs: &EcsManager<VkContext>,
         data: &TextureCreationData
-    ) -> Result<Self, VkError> {
+    ) -> Result<Self, EngineError> {
         let texture = unsafe {
             match data.layer_data.as_ref() {
                 Some(init_data) => ImageWrapper::new(
@@ -119,13 +116,13 @@ impl ImageWrapper {
         width: u32,
         height: u32,
         init_layer_data: Option<&[Vec<u8>]>
-    ) -> Result<ImageWrapper, VkError> {
+    ) -> Result<ImageWrapper, EngineError> {
 
         let creation_params = match (usage, format) {
             // Typical depth buffer
             (ImageUsage::DepthBuffer, TexturePixelFormat::Unorm16) => {
                 if init_layer_data.is_some() {
-                    return Err(VkError::OpFailed(
+                    return Err(EngineError::OpFailed(
                         String::from("Initialising depth buffer not allowed")));
                 }
                 ImageCreationParams {
@@ -143,7 +140,7 @@ impl ImageWrapper {
             // Typical off-screen-rendered color attachment
             (ImageUsage::OffscreenRenderSampleColorWriteDepth, TexturePixelFormat::Rgba) => {
                 if init_layer_data.is_some() {
-                    return Err(VkError::OpFailed(
+                    return Err(EngineError::OpFailed(
                         String::from("Initialising off-screen render image not allowed")));
                 }
                 ImageCreationParams {
@@ -161,7 +158,7 @@ impl ImageWrapper {
             // Typical off-screen-rendered depth attachment
             (ImageUsage::OffscreenRenderSampleColorWriteDepth, TexturePixelFormat::Unorm16) => {
                 if init_layer_data.is_some() {
-                    return Err(VkError::OpFailed(
+                    return Err(EngineError::OpFailed(
                         String::from("Initialising off-screen render image not allowed")));
                 }
                 ImageCreationParams {
@@ -179,7 +176,7 @@ impl ImageWrapper {
             // Typical initialised texture
             (ImageUsage::TextureSampleOnly, TexturePixelFormat::Rgba) => {
                 if init_layer_data.is_none() {
-                    return Err(VkError::OpFailed(
+                    return Err(EngineError::OpFailed(
                         String::from("Not initialising sample-only texture not allowed")));
                 }
                 ImageCreationParams {
@@ -197,7 +194,7 @@ impl ImageWrapper {
             // Typical sky box (cube map)
             (ImageUsage::Skybox, TexturePixelFormat::Rgba) => {
                 if init_layer_data.is_none() {
-                    return Err(VkError::OpFailed(
+                    return Err(EngineError::OpFailed(
                         String::from("Not initialising cube map texture not allowed")));
                 }
                 ImageCreationParams {
@@ -214,7 +211,7 @@ impl ImageWrapper {
 
             // Unhandled cases
             _ => {
-                return Err(VkError::OpFailed(
+                return Err(EngineError::OpFailed(
                     String::from("Tried to create an image with an unhandled config")));
             }
         };
@@ -255,7 +252,7 @@ impl ImageWrapper {
         width: u32,
         height: u32,
         creation_params: &ImageCreationParams
-    ) -> Result<vk::Image, VkError> {
+    ) -> Result<vk::Image, EngineError> {
         let extent3d = vk::Extent3D { width, height, depth: 1 };
         let flags = match creation_params.view_type {
             vk::ImageViewType::CUBE => vk::ImageCreateFlags::CUBE_COMPATIBLE,
@@ -276,7 +273,7 @@ impl ImageWrapper {
             .build();
         let image = context.device.create_image(&image_info, None)
             .map_err(|e| {
-                VkError::OpFailed(format!("Error creating image: {:?}", e))
+                EngineError::OpFailed(format!("Error creating image: {:?}", e))
             })?;
 
         Ok(image)
@@ -287,7 +284,7 @@ impl ImageWrapper {
         context: &VkContext,
         image: vk::Image,
         creation_params: &ImageCreationParams
-    ) -> Result<vk::ImageView, VkError> {
+    ) -> Result<vk::ImageView, EngineError> {
         let subresource_range = vk::ImageSubresourceRange::builder()
             .aspect_mask(creation_params.aspect)
             .base_mip_level(0)
@@ -302,7 +299,7 @@ impl ImageWrapper {
         let image_view = context.device
             .create_image_view(&image_view_create_info, None)
             .map_err(|e| {
-                VkError::OpFailed(format!("{:?}", e))
+                EngineError::OpFailed(format!("{:?}", e))
             })?;
 
         Ok(image_view)

@@ -1,11 +1,8 @@
 
-use crate::{
-    Handle,
-    resource::{Resource, ResourceLoader}
-};
+use crate::{Handle, resource::Resource};
 use std::any::Any;
 
-pub trait DynamicTable<L: ResourceLoader> {
+pub trait DynamicTable<L> {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
     fn free_all_resources(&mut self, loader: &L);
@@ -17,7 +14,7 @@ pub struct HandleTable<T: 'static> {
     items: Vec<Option<T>>
 }
 
-impl<L: ResourceLoader, T: Resource<L> + 'static> DynamicTable<L> for HandleTable<T> {
+impl<L, T: Resource<L> + 'static> DynamicTable<L> for HandleTable<T> {
 
     fn as_any(&self) -> &dyn Any {
         self as &dyn Any

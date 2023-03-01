@@ -3,7 +3,7 @@ mod instance;
 mod debug;
 mod physical_device;
 
-use crate::VkError;
+use error::EngineError;
 use ash::{
     Entry,
     Instance,
@@ -39,7 +39,7 @@ impl VkCore {
     pub unsafe fn new<W>(
         window_owner: &W,
         features: Vec<FeatureDeclaration>
-    ) -> Result<Self, VkError> where W: HasRawDisplayHandle + HasRawWindowHandle {
+    ) -> Result<Self, EngineError> where W: HasRawDisplayHandle + HasRawWindowHandle {
 
         let entry = Entry::linked();
         let instance = instance::make_instance(&entry, window_owner.raw_display_handle())?;
